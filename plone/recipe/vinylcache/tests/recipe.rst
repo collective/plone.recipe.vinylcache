@@ -64,8 +64,13 @@ Check the contents of the control script are correct::
         "$@"
     <BLANKLINE>
 
-Check the config with Varnish is syntactically correct by compiling it to C::
+Check the config with Varnish is syntactically correct by compiling it to C.
+NOTE: Vinyl Cache 9.0's VCC is pedantic about ACLs by default and may print a
+folding warning first (e.g. "localhost" and a 127.0.0.1 backend overlapping
+in the same ACL) -- that is a non-fatal warning, not a compile error, so the
+match below tolerates arbitrary output before the VCC_INFO banner::
     >>> print(system(varnish_bin + ' -C'))
+    ...
     /* VCC_INFO VMOD...
     /* ---===### include/vdef.h ###===--- */
     <BLANKLINE>
