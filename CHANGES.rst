@@ -35,6 +35,18 @@ Changelog
   ``zc.recipe.testrunner``) requires ``zc.buildout>=5.0.0``, which
   conflicts with Plone 6.1's pinned ``zc.buildout==4.2.0``. [mamico]
 
+- Pin ``zc.recipe.testrunner`` to ``3.2``: releases from 4.0 onwards
+  dropped the ``namespace_packages.txt`` metadata shim that
+  ``pkg_resources`` (still used internally by ``zc.buildout``) needs to
+  merge a purely-PEP-420 package into a ``zc`` namespace that is
+  otherwise legacy-declared -- which it is here, because of the
+  ``zc.recipe.egg`` pin above. Without this, buildout's own entry-point
+  loader fails with ``ModuleNotFoundError: No module named
+  'zc.recipe.testrunner'`` even though the same package installs and
+  imports fine via plain ``pip install``. Reproduced locally against both
+  a Plone-6.0/6.1-like (``zc.buildout`` 4.x) and Plone-6.2-like
+  (``zc.buildout`` 5.x) environment; 3.2 works in both. [mamico]
+
 - Update the default download URL to Vinyl Cache 9.0.3 and the default
   ``varnish-modules`` URL to release 0.28.0 (the release targeting the
   9.0 line; ``varnish-modules`` dropped support for Varnish 6.0 LTS
