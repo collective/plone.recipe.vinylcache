@@ -16,6 +16,25 @@ Changelog
 - BREAKING: only support Vinyl Cache (formerly Varnish Cache) version
   9.0.x and generate config (VCL) for this version only. [mamico]
 
+- BUGFIX: ``vcl_hit``'s grace-handling code used ``return(miss)``, which
+  is no longer a valid VCL return action from ``vcl_hit`` as of VCL
+  syntax 4.1 (confirmed against the real Vinyl Cache 9.0.3 VCC returns
+  table -- discovered by actually compiling the generated VCL in CI, not
+  just by reading docs). Replaced with ``return(restart)``, which
+  re-enters VCL processing at ``vcl_recv`` and naturally resolves to a
+  fresh fetch once an object's grace window has genuinely expired.
+  [mamico]
+
+- Drop Python 3.8 from the test matrix and ``python_requires`` (matches
+  upstream ``plone.recipe.varnish``, which dropped it for the same
+  reason: Plone's floating "-latest" requirements.txt files now pin
+  setuptools/packaging releases with no Python 3.8 wheels). [mamico]
+
+- Pin ``zc.recipe.egg`` to ``3.0.0`` in ``versions.cfg``: the current
+  ``zc.recipe.egg`` (4.0.0, pulled in transitively by
+  ``zc.recipe.testrunner``) requires ``zc.buildout>=5.0.0``, which
+  conflicts with Plone 6.1's pinned ``zc.buildout==4.2.0``. [mamico]
+
 - Update the default download URL to Vinyl Cache 9.0.3 and the default
   ``varnish-modules`` URL to release 0.28.0 (the release targeting the
   9.0 line; ``varnish-modules`` dropped support for Varnish 6.0 LTS

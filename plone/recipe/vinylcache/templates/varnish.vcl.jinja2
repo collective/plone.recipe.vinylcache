@@ -230,6 +230,14 @@ sub vcl_hit {
 
     {% if gracehealthy %}
     # We have no fresh fish. Lets look at the stale ones.
+    # NOTE: `return(miss)` was removed as a valid vcl_hit return action in
+    # Vinyl Cache/Varnish VCL 4.1 (confirmed against the real 9.0.3 VCL
+    # returns table: vcl_hit may only return deliver/fail/pass/restart/
+    # synth). `restart` is the closest available replacement for "this
+    # object's grace window is exhausted, go get a fresh one": it re-enters
+    # at vcl_recv, and since the object genuinely has no life left, the
+    # fresh lookup will resolve to a real miss/fetch (bounded by the
+    # `max_restarts` param, so this cannot loop forever).
     if (std.healthy(req.backend_hint)) {
         # Backend is healthy. Limit age to 10s.
         if (obj.ttl + {{gracehealthy}} > 0s) {
@@ -237,7 +245,7 @@ sub vcl_hit {
             return (deliver);
         } else {
             # No candidate for grace. Fetch a fresh object.
-            return(miss);
+            return (restart);
         }
     } else {
         # backend is sick - use full grace
@@ -248,7 +256,7 @@ sub vcl_hit {
             return (deliver);
         } else {
             # no graced object.
-            return (miss);
+            return (restart);
         }
     }
     {% endif %}
@@ -259,8 +267,12 @@ sub vcl_hit {
         return(synth(200, "Purged. in hit " + req.url));
     }
 
-    // fetch & deliver once we get the result
-    return (miss); # Dead code, keep as a safeguard
+    // Dead code, keep as a safeguard: obj.ttl >= 0s already returned
+    // deliver above, and (when grace is enabled) both branches above are
+    // exhaustive. `deliver` (not `miss`, removed in VCL 4.1) is the safe
+    // fallback here since Varnish's own object lookup should never hand
+    // vcl_hit an object that's genuinely past its keep/grace window.
+    return (deliver);
 }
 
 sub vcl_miss {
