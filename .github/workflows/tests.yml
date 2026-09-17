@@ -1,0 +1,54 @@
+# Inspired by:
+# https://github.com/zopefoundation/meta/tree/master/config/pure-python
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        # [Python version, tox env]
+        - ["3.8",    "py38-plone60"]
+        - ["3.8",    "py38-plone61"]
+        - ["3.8",    "py38-plone62"]
+        - ["3.9",    "py39-plone60"]
+        - ["3.9",    "py39-plone61"]
+        - ["3.9",    "py39-plone62"]
+        - ["3.10",   "py310-plone60"]
+        - ["3.10",   "py310-plone61"]
+        - ["3.10",   "py310-plone62"]
+        - ["3.11",   "py311-plone60"]
+        - ["3.11",   "py311-plone61"]
+        - ["3.11",   "py311-plone62"]
+    name: ${{ matrix.config[1] }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.config[0] }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.config[0] }}
+      - name: Pip cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.config[0] }}-${{ hashFiles('setup.*', 'tox.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.config[0] }}-
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox
+          # Vinyl Cache (Varnish) >=7.0 requires PCRE2, not the old PCRE1
+          # (libpcre3) headers the previous (Varnish 6.0-targeting) recipe
+          # build depended on.
+          sudo apt-get install libxml2-dev libxslt-dev python3-docutils libpcre2-dev pkg-config graphviz
+      - name: Test
+        run: tox -e ${{ matrix.config[1] }}
