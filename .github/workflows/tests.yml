@@ -29,13 +29,13 @@ jobs:
         - ["3.11",   "py311-plone62"]
     name: ${{ matrix.config[1] }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.config[0] }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.config[0] }}
       - name: Pip cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ matrix.config[0] }}-${{ hashFiles('setup.*', 'tox.ini') }}
@@ -48,7 +48,8 @@ jobs:
           pip install tox
           # Vinyl Cache (Varnish) >=7.0 requires PCRE2, not the old PCRE1
           # (libpcre3) headers the previous (Varnish 6.0-targeting) recipe
-          # build depended on.
-          sudo apt-get install libxml2-dev libxslt-dev python3-docutils libpcre2-dev pkg-config graphviz
+          # build depended on. libedit-dev matches the upstream
+          # plone.recipe.varnish build dependency list as of 6.0.18.
+          sudo apt-get install libxml2-dev libxslt-dev python3-docutils libpcre2-dev pkg-config graphviz libedit-dev
       - name: Test
         run: tox -e ${{ matrix.config[1] }}

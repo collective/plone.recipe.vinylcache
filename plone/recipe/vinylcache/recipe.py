@@ -42,7 +42,7 @@ return(lookup);
 """
 
 COOKIE_PASS_DEFAULT = """\
-"auth_token|__ac(|_(name|password|persistent))=":"\.(js|css|kss)$"
+"auth_token|__ac(|_(name|password|persistent))=":"\.(js|css|woff|woff2)$"
 """  # noqa: W605
 COOKIE_PASS_RE = re.compile('"(.*)":"(.*)"')
 COOKIE_PASS_NOT_EXCLUDE_DEFAULT = "/\\+\\+resource\\+\\+zmi/"
@@ -284,9 +284,7 @@ class ConfigureRecipe(BaseRecipe):
         config["healthprobeurl"] = self.options.get("health-probe-url", None)
         config["healthprobetimeout"] = self.options.get("health-probe-timeout", None)
         config["healthprobeinterval"] = self.options.get("health-probe-interval", None)
-        config["healthprobewindow"] = self.options.get(
-            "health-probe-window", None
-        )
+        config["healthprobewindow"] = self.options.get("health-probe-window", None)
         config["healthprobethreshold"] = self.options.get(
             "health-probe-threshold", None
         )

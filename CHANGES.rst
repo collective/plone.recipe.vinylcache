@@ -36,11 +36,6 @@ Changelog
   left over from supporting older Varnish releases; they now correctly
   emit ``-j unix,user=...[,ccgroup=...]``. [mamico]
 
-- BUGFIX: hostname matching for backends using the ``hostname:path`` URL
-  syntax incorrectly wrapped the hostname in a regex character class
-  (``[hostname]`` instead of ``hostname``), matching a single character
-  instead of the hostname; fixed to use a proper anchor. [mamico]
-
 - Fix the internal VCL syntax version marker to be the string ``"4.1"``
   instead of the float ``4.0`` -- this recipe always generates VCL syntax
   version 4.1. [mamico]
@@ -69,6 +64,10 @@ Changelog
   versions) in CI; drop the Plone 5.2 / Python 2.7 test variant.
   [mamico]
 
-- Carried over from ``plone.recipe.varnish`` unreleased changes at fork
-  time: ``cookie-pass-not-exclude`` config option, and ``vcl_synth``
-  custom VCL insertion point. [mamico]
+- Carried over from ``plone.recipe.varnish``'s own history (already fixed
+  there, not novel to this fork): the ``cookie-pass-not-exclude`` config
+  option and ``vcl_synth`` custom VCL insertion point (6.0.13); the
+  hostname-matching regex character-class bug for ``hostname:path``
+  backends, fixed the same way independently while porting (6.0.18); and
+  the ``cookie-pass`` default extension list dropping ``kss`` in favour of
+  ``woff``/``woff2`` (6.0.13.1, [erral]). [mamico]
