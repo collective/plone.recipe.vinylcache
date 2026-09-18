@@ -4,6 +4,16 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- BUGFIX: the new default ``name`` (``${buildout:directory}/var/<part
+  name>``, see above) broke ``varnishd`` startup and even ``varnishd -C``
+  syntax checks with "Error: Cannot create working directory ...: No
+  such file or directory": ``varnishd`` only creates the leaf directory
+  of its ``-n`` working directory, not missing parents (e.g. ``var/``
+  itself). ``plone.recipe.vinylcache:script`` now creates that directory
+  (and any missing parents) itself during install. Caught by actually
+  running the compiled binary against the generated script in CI/locally,
+  not just by inspecting the VCL. [mamico]
+
 - New features, beyond parity with ``plone.recipe.varnish``:
 
   - ``vcl_hash`` default now includes ``req.http.host`` (falling back to
@@ -63,6 +73,7 @@ Changelog
     file, and the directory holding them are all written with
     restricted permissions (0600/0600/0700) since they contain private
     key material.
+
   [mamico]
 
 - Default ``plone.recipe.vinylcache:script``'s ``name`` option (which maps

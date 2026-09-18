@@ -430,6 +430,17 @@ class ScriptRecipe(BaseRecipe):
                 os.mkdir(self.options["cache-location"])
                 self.options.created(self.options["cache-location"])
 
+        # If `name` is an absolute path, it's used by varnishd as its
+        # working directory (-n) -- create it (and any missing parent,
+        # e.g. `var/`) ourselves, since varnishd itself only creates the
+        # leaf directory, not the full path, and fails outright
+        # ("Cannot create working directory ...: No such file or
+        # directory") when an intermediate parent is missing.
+        name = self.options.get("name")
+        if name and name.startswith("/") and not os.path.exists(name):
+            os.makedirs(name)
+            self.options.created(name)
+
         script = self.create_varnish_script()
         with open(self.options["script-filename"], "wt") as fio:
             fio.write(script)
