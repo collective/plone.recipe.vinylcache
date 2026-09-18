@@ -67,21 +67,21 @@ Check the contents of the control script are correct::
 Check the config with Varnish is syntactically correct by compiling it to C.
 NOTE: Vinyl Cache 9.0's VCC is pedantic about ACLs by default and prints a
 folding warning (e.g. "localhost" and a 127.0.0.1 backend overlapping in the
-same ACL) -- a non-fatal warning, not a compile error. When that warning is
-printed, the usual "/* VCC_INFO VMOD ... */" leading banner comment is not
-emitted at all (not just reordered), so the match below does not require it,
-only the parts that are present either way::
-    >>> print(system(varnish_bin + ' -C'))
-    ...
-    /* ---===### include/vdef.h ###===--- */
-    <BLANKLINE>
-    ...
-    /* --- BEGIN VMOD header --- */
-    ...
-    /* --- BEGIN VMOD xkey --- */
-    ...
-    const struct VCL_conf VCL_conf = {
-    ...
+same ACL) -- a non-fatal warning, not a compile error, and its presence also
+suppresses the usual "/* VCC_INFO VMOD ... */" leading banner comment. Rather
+than fight doctest's ellipsis-vs-"..."-continuation-prompt ambiguity (a bare
+"..." line right after a ">>>" line is parsed as a source continuation, not
+as expected output, so it can't be used to mean "tolerate any prefix" here),
+just assert the markers that are present either way are all in the output::
+    >>> vcc_output = system(varnish_bin + ' -C')
+    >>> '/* ---===### include/vdef.h ###===--- */' in vcc_output
+    True
+    >>> '/* --- BEGIN VMOD header --- */' in vcc_output
+    True
+    >>> '/* --- BEGIN VMOD xkey --- */' in vcc_output
+    True
+    >>> 'const struct VCL_conf VCL_conf = {' in vcc_output
+    True
 
 Test out customising the storage options with a new test buildout::
 
