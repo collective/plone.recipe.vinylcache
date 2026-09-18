@@ -8,6 +8,13 @@
 vcl {{vcl_version}};
 
 import std;
+{% if purgebyid %}
+# collective.purgebyid-compatible secondary-key purging. Requires the
+# `xkey` vmod to actually be compiled and available (`[varnish-build]
+# compile-vmods = true`), since purge-by-id = on is what emits this
+# import.
+import xkey;
+{% endif %}
 {{custom['vcl_import']}}
 
 {% if gracehealthy %}
@@ -58,11 +65,18 @@ sub vcl_init {
     new {{director['name']}} = directors.{{director['type']}}();
     {% for backend in director['backends'] %}
     {{director['name']}}.add_backend({{backend}});
-    {% endfor %}{% endfor %}{% endif %}
+    {% endfor %}
+    {% if director['type'] == 'shard' %}
+    # Explicit reconfigure after adding backends is the documented best
+    # practice for the shard director: without it, it reconfigures itself
+    # implicitly (and less predictably) on first use.
+    {{director['name']}}.reconfigure();
+    {% endif %}
+    {% endfor %}{% endif %}
     {{custom['vcl_init']}}
 }
 
-acl list_purge {
+acl list_purge +fold(-report) {
     "localhost";
     {% for purgehost in purgehosts %}
     "{{purgehost}}";
@@ -95,6 +109,24 @@ sub vcl_recv {
     {% endfor %}
     {% endif %}
 
+    # WebSocket upgrade requests must never be cached/hashed like a normal
+    # GET -- pipe them straight through to the backend untouched.
+    if (req.http.Upgrade ~ "(?i)websocket") {
+        return (pipe);
+    }
+
+    # Normalize Accept-Encoding to avoid needlessly fragmenting the cache
+    # (one cached variant per distinct Accept-Encoding string a client
+    # happens to send, rather than one for "compressible" and one for
+    # "not").
+    if (req.http.Accept-Encoding) {
+        if (req.http.Accept-Encoding ~ "gzip") {
+            set req.http.Accept-Encoding = "gzip";
+        } else {
+            unset req.http.Accept-Encoding;
+        }
+    }
+
     if (req.method == "PURGE") {
         # Not from an allowed IP? Then die with an error.
         if (!client.ip ~ list_purge) {
@@ -115,6 +147,19 @@ sub vcl_recv {
             # request won't go to the backend.
             return(synth(200, "Ban added"));
     }
+    {% if purgebyid %}
+
+    # collective.purgebyid compatibility: a request for
+    # /@@purgebyid/<id> purges every cached object that was tagged with
+    # that id via the `xkey` response header (see vcl_backend_response).
+    if (req.url ~ "^/@@purgebyid/") {
+        if (!client.ip ~ list_purge) {
+            return (synth(403, "Not allowed."));
+        }
+        set req.http.X-Purged-Count = xkey.purge(regsub(req.url, "^/@@purgebyid/", ""));
+        return (synth(200, "Purged " + req.http.X-Purged-Count + " objects"));
+    }
+    {% endif %}
 
     # Only deal with "normal" types.
     # NOTE: Vinyl Cache / Varnish 8.0 changed the *built-in* VCL default for
@@ -123,11 +168,13 @@ sub vcl_recv {
     # explicitly returning pipe here, so it is *not* affected by that
     # upstream change -- this is intentional, not an oversight. Do not
     # "simplify" this by relying on the new built-in default, that would
-    # silently turn piped-through methods (e.g. PATCH) into hard rejections.
+    # silently turn piped-through methods (e.g. LOCK, PROPFIND) into hard
+    # rejections.
     if (req.method != "GET" &&
            req.method != "HEAD" &&
            req.method != "PUT" &&
            req.method != "POST" &&
+           req.method != "PATCH" &&
            req.method != "TRACE" &&
            req.method != "OPTIONS" &&
            req.method != "DELETE") {
@@ -183,14 +230,10 @@ sub vcl_recv {
     {% endif %}
 
 
-    # Large static files should be piped, so they are delivered directly to the end-user without
-    # waiting for Varnish to fully read the file first.
-
-    # TODO: make this configureable.
-
-    if (req.url ~ "^[^?]*\.(mp3|mp4|rar|tar|tgz|gz|wav|zip)(\?.*)?$") {
-        return(pipe);
-    }
+    # Large files are streamed to the client instead of being piped (see
+    # vcl_backend_response's beresp.do_stream) -- streaming still allows
+    # Varnish to cache and log the response, unlike pipe, which hands off
+    # the raw connection and gives up both.
 
     return(hash);
 }
@@ -296,6 +339,27 @@ sub vcl_backend_fetch{
 sub vcl_backend_response {
     {{custom['vcl_backend_response']}}
 
+    # Stream large files to the client as they arrive instead of fully
+    # buffering them first. Unlike piping (the old approach), this keeps
+    # the response cacheable and visible to logging/vcl_deliver.
+    # TODO: make the extension list configurable.
+    if (bereq.url ~ "^[^?]*\.(mp3|mp4|mkv|avi|7z|rar|tar|tgz|gz|zip|iso|wav|pdf|dmg)(\?.*)?$") {
+        set beresp.do_stream = true;
+    }
+    {% if purgebyid %}
+
+    # collective.purgebyid compatibility: the backend tags a response
+    # with every content id it involved via
+    # X-Ids-Involved: #uuid1#uuid2#...#
+    # The `xkey` vmod expects its own keys as a space/comma-separated
+    # list in a response header literally named `xkey`, so translate one
+    # into the other and drop the original (not meant for clients).
+    if (beresp.http.X-Ids-Involved) {
+        set beresp.http.xkey = regsuball(beresp.http.X-Ids-Involved, "#", " ");
+        unset beresp.http.X-Ids-Involved;
+    }
+    {% endif %}
+
     # The object is not cacheable
     if (beresp.http.Set-Cookie) {
         set beresp.http.X-Cacheable = "NO - Set Cookie";
@@ -353,6 +417,12 @@ sub vcl_backend_response {
     set beresp.grace = {{gracesick}};
     {% endif %}
 
+    {% if not verbose %}
+    # verbose-headers is off (default): don't leak cache-internal
+    # diagnostics to clients.
+    unset beresp.http.X-Cacheable;
+    {% endif %}
+
     return (deliver);
 }
 
@@ -363,6 +433,12 @@ sub vcl_deliver {
     } else {
         set resp.http.X-Cache = "MISS";
     }
+    {% if not verbose %}
+    # verbose-headers is off (default): don't leak cache-internal
+    # diagnostics to clients.
+    unset resp.http.X-Cache;
+    unset resp.http.grace;
+    {% endif %}
     /* Rewrite s-maxage to exclude from intermediary proxies
       (to cache *everywhere*, just use 'max-age' token in the response to avoid
       this override) */

@@ -4,6 +4,64 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- New features, beyond parity with ``plone.recipe.varnish``:
+
+  - ``vcl_hash`` default now includes ``req.http.host`` (falling back to
+    ``server.ip``), matching Varnish's own built-in default. The previous
+    default hashed on ``req.url`` alone, which can cross-contaminate the
+    cache between two different vhosts/backends serving overlapping URL
+    paths on the same Vinyl Cache instance.
+  - ``PATCH`` added to the method whitelist in ``vcl_recv`` (alongside
+    ``PUT``/``POST``/``DELETE``), for REST APIs (e.g. ``plone.restapi``).
+  - WebSocket upgrade requests (``Upgrade: websocket``) are now piped
+    straight through in ``vcl_recv`` instead of falling into normal
+    GET/HEAD caching logic.
+  - ``Accept-Encoding`` is normalized in ``vcl_recv`` (to ``gzip`` or
+    unset) to avoid fragmenting the cache per client-specific
+    ``Accept-Encoding`` strings.
+  - Large files (by extension) are now streamed (``beresp.do_stream``)
+    instead of piped in ``vcl_backend_response`` -- streaming keeps the
+    response cacheable and visible to logging, unlike pipe.
+  - ``balancer`` accepts a new value, ``shard``, using Varnish's
+    consistent-hashing director: the same request lands on the same
+    backend every time, which is better for cache hit ratio than
+    ``round_robin``/``random`` when several backends could each
+    independently cache the same content. Emits the documented
+    ``.reconfigure()`` call after adding backends.
+  - The purge ACL (``acl list_purge``) now sets ``+fold(-report)``,
+    keeping Vinyl Cache 9.0's default ACL-folding optimization but
+    silencing the (harmless but noisy) compiler warning it emits for
+    common setups, e.g. a backend on 127.0.0.1 overlapping with the
+    "localhost" entry.
+  - ``verbose-headers`` is a real, working option again (it was removed
+    earlier in this fork's history because it was dead code in the
+    version it was forked from). When ``off`` (the default), the
+    diagnostic ``X-Cache``, ``X-Cacheable`` and ``grace`` response
+    headers are stripped before delivery; set to ``on`` to keep them
+    for debugging.
+  - New ``purge-by-id`` option (default ``off``) for
+    ``plone.recipe.vinylcache:configuration``, compatible with
+    `collective.purgebyid <https://github.com/collective/collective.purgebyid>`_:
+    when a backend response carries an ``X-Ids-Involved`` header
+    (``#uuid1#uuid2#...#``), it's translated into the ``xkey`` vmod's
+    secondary-key header, and ``GET /@@purgebyid/<id>`` purges every
+    cached object tagged with that id via ``xkey.purge()`` -- without
+    needing to enumerate every cached URL variant of that content.
+    Requires ``[varnish-build] compile-vmods = true`` (the ``xkey``
+    import is only emitted when this option is on, so it never breaks
+    compilation for anyone who hasn't opted into building vmods).
+  - New ``tls-config`` option for ``plone.recipe.vinylcache:script``,
+    mapping to ``varnishd -A`` (a Vinyl Cache 9.0 addition letting
+    ``varnishd`` terminate TLS itself via a hitch-like config file,
+    instead of needing a separate TLS terminator in front of it).
+  - New ``plone.recipe.vinylcache:selfsigned`` recipe: generates a
+    self-signed certificate/key (via ``openssl``, idempotently -- it
+    won't regenerate an already-present certificate on later buildout
+    runs) plus a ready-to-use ``-A``-style config file, for pairing with
+    ``tls-config`` in internal/dev/testing setups where a CA-issued
+    certificate isn't warranted.
+  [mamico]
+
 - Default ``plone.recipe.vinylcache:script``'s ``name`` option (which maps
   to ``varnishd -n``, controlling its working directory) to
   ``${buildout:directory}/var/<part name>`` instead of leaving it unset.

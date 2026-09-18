@@ -16,6 +16,11 @@ VCL_TEMPLATE = "varnish.vcl.jinja2"
 DIRECTOR_TYPES = [
     "round_robin",
     "random",
+    # Consistent-hashing director: the same request (by default keyed on
+    # client.identity) always lands on the same backend, which is much
+    # better for cache hit ratio than round_robin/random when several
+    # backends could each independently cache the same content.
+    "shard",
 ]
 
 
@@ -126,6 +131,8 @@ class VclGenerator(object):
         data["cookiepass"] = self.cfg["cookiepass"]
         data["cookiepassnotexclude"] = self.cfg["cookiepassnotexclude"]
         data["code404page"] = self.cfg["code404page"]
+        data["verbose"] = self.cfg.get("verbose", False)
+        data["purgebyid"] = self.cfg.get("purgebyid", False)
         data["gracehealthy"] = self.cfg["gracehealthy"]
         data["gracesick"] = self.cfg["gracesick"]
         data["healthprobeurl"] = self.cfg.get("healthprobeurl") or "/ok"

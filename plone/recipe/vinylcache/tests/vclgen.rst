@@ -363,3 +363,30 @@ inside the cookie-pass block::
     True
     >>> 'req.http.UrlNoQs ~ "\.(js|css|kss)"' in result
     True
+
+
+Purge by id (collective.purgebyid / xkey)
+------------------------------------------
+
+Off by default -- must not emit an `xkey` import (it's only actually
+compiled when `compile-vmods = true`), nor the purge-by-id endpoint::
+
+    >>> config['purgebyid'] = False
+    >>> result = VclGenerator(config)()
+    >>> 'import xkey;' in result
+    False
+    >>> '/@@purgebyid/' in result
+    False
+
+When enabled, the generator wires in the xkey import, the
+X-Ids-Involved -> xkey header translation, and the /@@purgebyid/<id>
+endpoint::
+
+    >>> config['purgebyid'] = True
+    >>> result = VclGenerator(config)()
+    >>> 'import xkey;' in result
+    True
+    >>> 'set beresp.http.xkey = regsuball(beresp.http.X-Ids-Involved, "#", " ");' in result
+    True
+    >>> 'xkey.purge(regsub(req.url, "^/@@purgebyid/", ""))' in result
+    True

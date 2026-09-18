@@ -47,6 +47,7 @@ setup(
             "build = plone.recipe.vinylcache.recipe:BuildRecipe",
             "configuration = plone.recipe.vinylcache.recipe:ConfigureRecipe",
             "script = plone.recipe.vinylcache.recipe:ScriptRecipe",
+            "selfsigned = plone.recipe.vinylcache.recipe:SelfSignedCertRecipe",
         ],
     },
 )

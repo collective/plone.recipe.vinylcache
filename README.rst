@@ -41,6 +41,45 @@ refers to the daemon as ``varnishd`` throughout; only the recipe's own
 package name and download defaults track the new "Vinyl Cache" branding
 and release line.
 
+
+What's new compared to plone.recipe.varnish
+---------------------------------------------
+
+Besides targeting Vinyl Cache 9.0.x instead of Varnish 6.0 LTS, this
+fork adds a handful of things not present in ``plone.recipe.varnish``:
+
+* The default ``vcl_hash`` now includes ``req.http.host`` (matching
+  Vinyl Cache's own built-in default), avoiding cache cross-contamination
+  between different vhosts/backends serving overlapping URL paths on the
+  same instance.
+* ``PATCH`` is treated like ``PUT``/``POST``/``DELETE`` in the method
+  whitelist, and WebSocket upgrade requests are piped through instead of
+  hitting normal GET/HEAD caching logic.
+* ``Accept-Encoding`` is normalized to reduce cache fragmentation, and
+  large files (by extension) are streamed (``beresp.do_stream``) instead
+  of piped, keeping them cacheable and visible to logging.
+* A new ``shard`` value for the ``balancer`` option (consistent-hashing
+  director, better cache hit ratio than ``round_robin``/``random`` across
+  several backends).
+* The purge ACL suppresses Vinyl Cache 9.0's (harmless but noisy)
+  ACL-folding compiler warning for common setups.
+* ``verbose-headers`` is a real, working option (diagnostic
+  ``X-Cache``/``X-Cacheable``/``grace`` response headers, off by
+  default).
+* A new ``purge-by-id`` option, compatible with `collective.purgebyid
+  <https://github.com/collective/collective.purgebyid>`_, for purging
+  every cached variant of a piece of content by id via the ``xkey``
+  vmod, rather than needing to enumerate cached URLs.
+* A new ``tls-config`` option (``script``) mapping to ``varnishd -A``, a
+  Vinyl Cache 9.0 addition letting ``varnishd`` terminate TLS itself.
+* A new ``plone.recipe.vinylcache:selfsigned`` recipe to generate a
+  matching self-signed certificate for internal/dev/testing use of
+  ``tls-config``.
+
+See ``CHANGES.rst`` for the full list, including bugfixes carried over
+from fixing dead/no-op options this fork was originally forked with.
+
+
 Configuring it is very simple. For example::
 
     [varnish-build]
@@ -221,6 +260,10 @@ The ``plone.recipe.vinylcache`` recipe does one or more of the following:
     generates a wrapper script inside your buildout that will start Vinyl
     Cache with the correct configuration.
 
+``plone.recipe.vinylcache:selfsigned``
+    generates a self-signed TLS certificate and a config file suitable
+    for ``script``'s ``tls-config`` option.
+
 
 
 Build Vinyl Cache from sources
@@ -265,10 +308,15 @@ These options are available for the recipe part plone.recipe.vinylcache:configur
     ``127.0.0.1:8080``.
 
 ``balancer``
-    If included and set to either ``random`` or ``round_robin``, this option
-    configures Vinyl Cache to load balance the servers specified by the
-    ``backends`` directive. Possible values: ``none`` (default),
-    ``round_robin`` or ``random``.
+    If included and set to ``random``, ``round_robin`` or ``shard``, this
+    option configures Vinyl Cache to load balance the servers specified
+    by the ``backends`` directive. Possible values: ``none`` (default),
+    ``round_robin``, ``random`` or ``shard``. ``shard`` uses Vinyl
+    Cache's consistent-hashing director: the same request (by default
+    keyed on ``client.identity``) always lands on the same backend,
+    which gives a much better cache hit ratio than ``round_robin``/
+    ``random`` when several backends could each independently cache the
+    same content.
 
 ``between-bytes-timeout``
     If specified, this option configures the timeout (in seconds) for Vinyl
@@ -294,7 +342,7 @@ These options are available for the recipe part plone.recipe.vinylcache:configur
     bypassing any caching. Additionally, if the current url matches urlexcludes,
     then the cookies are removed, and the request piped to the backend.
     Defaults are optimized for Plone, one line:
-    ``"auth_token|__ac(|_(name|password|persistent))=":"\.(js|css|kss)$"``
+    ``"auth_token|__ac(|_(name|password|persistent))=":"\.(js|css|woff|woff2)$"``
     So when you are authenticated, the request is always handled by Plone.
     When an authenticated user requests a js/css/kss file,
     Plone will see you as anonymous because no cookies reach Plone.
@@ -326,6 +374,27 @@ These options are available for the recipe part plone.recipe.vinylcache:configur
 ``purge-hosts``
     Specifies hostnames or IP addresses for purge ACL. By default ``localhost`` and
     the backends are allowed to purge. Additional allowed hosts are listed here.
+
+``purge-by-id``
+    Enables `collective.purgebyid
+    <https://github.com/collective/collective.purgebyid>`_-compatible
+    secondary-key purging via the ``xkey`` vmod: a backend response
+    carrying an ``X-Ids-Involved: #uuid1#uuid2#...#`` header gets every
+    id translated into an ``xkey`` secondary cache key, and
+    ``GET /@@purgebyid/<id>`` (from an IP allowed by ``purge-hosts``)
+    purges every cached object tagged with that id -- without needing to
+    enumerate every cached URL variant of that content. Possible values:
+    ``on`` or ``off`` (default). Requires
+    ``[varnish-build] compile-vmods = true``: the ``xkey`` VCL import is
+    only emitted when this option is ``on``, so leaving it ``off`` never
+    breaks compilation for setups that haven't built vmods.
+
+``verbose-headers``
+    Enable sending extra diagnostic response headers (``X-Cache``,
+    ``X-Cacheable``, ``grace``) that expose what Vinyl Cache did with the
+    request and the cache status. Useful for debugging cache settings and
+    optimizations; leave off in production to avoid exposing cache
+    internals to clients. Possible values: ``on`` or ``off`` (default).
 
 ``vcl_recv``, ``vcl_hit``, ``vcl_miss``, ``vcl_backend_fetch``, ``vcl_backend_response``, ``vcl_deliver``, ``vcl_pipe``, ``vcl_purge``, ``vcl_hash``, ``vcl_import``, ``vcl_init``, ``vcl_pass``, ``vcl_synth``
     Insert arbitrary VCL code into the generated config.
@@ -487,6 +556,16 @@ Start Vinyl Cache as a daemon or in foreground with the given settings. These op
     If specified sets the hostname and port on which Vinyl Cache will listen
     for commands using its telnet interface.
 
+``tls-config``
+    Path to a hitch-style TLS configuration file, mapping to
+    ``varnishd -A`` (a Vinyl Cache 9.0 addition). Lets ``varnishd``
+    terminate TLS itself instead of needing a separate TLS terminator
+    (e.g. Hitch, nginx, haproxy) in front of it. See the
+    ``plone.recipe.vinylcache:selfsigned`` recipe below for a quick way
+    to generate a matching self-signed certificate and config file for
+    internal/dev/testing use. Not set by default (no ``-A`` flag is
+    emitted).
+
 ``script-filename``
     Name of the start script file in ``buildout:bin-directory``.
     Defaults to the name of this buildout part.
@@ -522,6 +601,56 @@ Start Vinyl Cache as a daemon or in foreground with the given settings. These op
 ``user``
     The name of the user Vinyl Cache should switch to before accepting any
     requests. Defaults to ``nobody``.
+
+
+Generate a self-signed TLS certificate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``plone.recipe.vinylcache:selfsigned`` generates a self-signed
+certificate/private key (via the ``openssl`` command line tool, which
+must be available on ``PATH``) and a ready-to-use hitch-style config
+file, for pairing with the ``script`` part's ``tls-config`` option.
+Meant for internal/dev/testing use -- being self-signed, clients need to
+explicitly trust this certificate (or ignore validation errors); it is
+**not** a substitute for a CA-issued certificate on anything
+internet-facing.
+
+Generation is idempotent: an already-present certificate/key is not
+regenerated (and so not rotated/invalidated) on later buildout runs.
+
+Example::
+
+    [varnish-tls-cert]
+    recipe = plone.recipe.vinylcache:selfsigned
+    common-name = internal.example.org
+    bind = *:8443
+
+    [varnish-script]
+    recipe = plone.recipe.vinylcache:script
+    tls-config = ${varnish-tls-cert:config-file}
+
+``bind``
+    Hostname (or ``*``) and port the generated hitch-style config file's
+    ``frontend`` block will listen on. Defaults to ``*:8443``.
+
+``common-name``
+    The ``CN`` (Common Name) of the self-signed certificate. Defaults to
+    ``localhost``.
+
+``days``
+    Certificate validity, in days. Defaults to ``3650`` (10 years) --
+    long-lived since this is meant for internal/dev use where rotation
+    ceremony isn't the point.
+
+``key-size``
+    RSA key size in bits. Defaults to ``2048``.
+
+``key-file``, ``cert-file``, ``combined-file``, ``config-file``
+    Output paths for, respectively: the private key, the certificate,
+    the two concatenated together (what the hitch-style config's
+    ``pem-file`` directive points at), and the hitch-style config file
+    itself (what you point ``tls-config`` at). All default to sensible
+    locations inside this part's own ``parts`` directory.
 
 
 .. _Vinyl Cache: https://vinyl-cache.org/

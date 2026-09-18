@@ -9,6 +9,9 @@ exec {{daemon}} \
 {% if telnet %}
     -T {{telnet}} \
 {% endif %}
+{% if tls_config %}
+    -A "{{tls_config}}" \
+{% endif %}
     -s {{cache_type}},{% if cache_type == 'file' %}"{{cache_location}}",{% endif %}{{cache_size}} \
 {% if mode == 'foreground' %}
     -F \

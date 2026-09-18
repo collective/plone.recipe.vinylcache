@@ -38,6 +38,11 @@ auth_token
 
 DEFAULT_VCL_HASH = """\
 hash_data(req.url);
+if (req.http.host) {
+    hash_data(req.http.host);
+} else {
+    hash_data(server.ip);
+}
 return(lookup);
 """
 
@@ -168,6 +173,13 @@ class ConfigureRecipe(BaseRecipe):
                 "longer exists in Varnish/Vinyl Cache); remove it from your "
                 "buildout configuration."
             )
+        self.options.setdefault("verbose-headers", "off")
+        # collective.purgebyid-compatible secondary-key purging via the
+        # `xkey` vmod. Off by default: `xkey` is only actually compiled
+        # when `[varnish-build] compile-vmods = true` is set, so emitting
+        # `import xkey;` unconditionally would break compilation for
+        # anyone who hasn't opted into building vmods.
+        self.options.setdefault("purge-by-id", "off")
         self.options.setdefault("balancer", "none")
         self.options.setdefault("backends", "127.0.0.1:8080")
         self.options.setdefault(
@@ -279,6 +291,10 @@ class ConfigureRecipe(BaseRecipe):
 
         config = {}
 
+        # enable verbose (diagnostic) response headers: X-Cache, X-Cacheable,
+        # grace. Off by default to avoid leaking cache internals to clients.
+        config["verbose"] = self.options["verbose-headers"] == "on"
+        config["purgebyid"] = self.options["purge-by-id"] == "on"
         config["gracehealthy"] = self.options.get("grace-healthy", None)
         config["gracesick"] = self.options.get("grace-sick", "600s")
         config["healthprobeurl"] = self.options.get("health-probe-url", None)
@@ -438,7 +454,107 @@ class ScriptRecipe(BaseRecipe):
         data["name"] = self.options.get("name")
         data["secret"] = self.options.get("secret-file", "nosecret")
         data["telnet"] = self.options.get("telnet")
+        # `-A` (a hitch-like TLS config file) is a Vinyl Cache 9.0 addition,
+        # letting varnishd terminate TLS itself instead of needing a
+        # separate terminator in front of it.
+        data["tls_config"] = self.options.get("tls-config")
         data["parameters"] = self.options["runtime-parameters"].strip().split()
 
         template = jinja2env.get_template("start_script.jinja2")
         return template.render(data)
+
+
+class SelfSignedCertRecipe(BaseRecipe):
+    """Generate a self-signed TLS certificate plus a hitch-style config
+    file suitable for `varnishd -A` (see `ScriptRecipe`'s `tls-config`
+    option). Meant for internal/dev/testing use where a real CA-issued
+    certificate isn't warranted -- clients will need to explicitly trust
+    this certificate (or ignore validation errors) since it is
+    self-signed.
+    """
+
+    def __init__(self, buildout, name, options):
+        super(SelfSignedCertRecipe, self).__init__(buildout, name, options)
+
+        self.options.setdefault(
+            "location", os.path.join(buildout["buildout"]["parts-directory"], self.name)
+        )
+        self.options.setdefault("common-name", "localhost")
+        self.options.setdefault("bind", "*:8443")
+        self.options.setdefault("key-size", "2048")
+        self.options.setdefault("days", "3650")
+        self.options.setdefault(
+            "key-file", os.path.join(self.options["location"], "key.pem")
+        )
+        self.options.setdefault(
+            "cert-file", os.path.join(self.options["location"], "cert.pem")
+        )
+        self.options.setdefault(
+            "combined-file", os.path.join(self.options["location"], "combined.pem")
+        )
+        self.options.setdefault(
+            "config-file", os.path.join(self.options["location"], "tls.conf")
+        )
+        self._process_bind()
+
+    def install(self):
+        if not os.path.exists(self.options["location"]):
+            os.mkdir(self.options["location"])
+            self.options.created(self.options["location"])
+
+        # Idempotent: don't regenerate (and so don't rotate/invalidate) an
+        # already-present key/cert on every buildout run.
+        if not os.path.exists(self.options["key-file"]) or not os.path.exists(
+            self.options["cert-file"]
+        ):
+            cmd = (
+                "openssl req -x509 -nodes "
+                "-newkey rsa:{key_size} "
+                '-keyout "{key_file}" -out "{cert_file}" '
+                "-days {days} "
+                '-subj "/CN={common_name}"'
+            ).format(
+                key_size=self.options["key-size"],
+                key_file=self.options["key-file"],
+                cert_file=self.options["cert-file"],
+                days=self.options["days"],
+                common_name=self.options["common-name"],
+            )
+            self.logger.info(
+                "Generating self-signed certificate for CN=%s",
+                self.options["common-name"],
+            )
+            system(cmd)
+            self.options.created(self.options["key-file"])
+            self.options.created(self.options["cert-file"])
+
+        # hitch/varnishd's -A pem-file directive expects cert and key
+        # concatenated into a single file.
+        with open(self.options["cert-file"]) as fio:
+            cert_data = fio.read()
+        with open(self.options["key-file"]) as fio:
+            key_data = fio.read()
+        with open(self.options["combined-file"], "wt") as fio:
+            fio.write(cert_data)
+            fio.write(key_data)
+        self.options.created(self.options["combined-file"])
+
+        config = (
+            "frontend = {{\n"
+            '    host = "{host}"\n'
+            '    port = "{port}"\n'
+            "}}\n"
+            'pem-file = "{combined_file}"\n'
+        ).format(
+            host=self.options["bind-host"] or "*",
+            port=self.options["bind-port"],
+            combined_file=self.options["combined-file"],
+        )
+        with open(self.options["config-file"], "wt") as fio:
+            fio.write(config)
+        self.options.created(self.options["config-file"])
+
+        return self.options.created()
+
+    def update(self):
+        self.install()
