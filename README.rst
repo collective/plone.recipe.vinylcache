@@ -459,8 +459,17 @@ Start Vinyl Cache as a daemon or in foreground with the given settings. These op
     ``daemon``.
 
 ``name``
-    If specified this sets the name of the Vinyl Cache instance (defaults to
-    the host name).
+    Sets the name of the Vinyl Cache instance. Defaults to
+    ``${buildout:directory}/var/<this part's name>``, **not**
+    ``varnishd``'s own system default -- which is typically somewhere
+    under ``/var/run`` and requires root, the single most common
+    "Permission denied" trap when running ``varnishd`` unprivileged from
+    a buildout. Deliberately not placed under ``parts`` (that tree is
+    meant to be disposable/regenerated, e.g. whenever ``varnish-build``
+    is recompiled, which would lose this runtime state) and keyed by the
+    part's own name so multiple Vinyl Cache instances in the same
+    buildout don't collide. Set this explicitly if you want the
+    traditional host-name-based default or a different location.
 
     From ``varnishd``'s manpage:
 

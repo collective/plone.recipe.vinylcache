@@ -377,6 +377,22 @@ class ScriptRecipe(BaseRecipe):
         self.options.setdefault(
             "location", os.path.join(buildout["buildout"]["parts-directory"], self.name)
         )
+        # Default varnishd's working directory (-n) to somewhere inside the
+        # buildout's `var` directory, not whatever system default varnishd
+        # itself picks (e.g. /var/run/varnishd, which typically requires
+        # root -- the single most common "Permission denied" trap when
+        # running varnishd unprivileged from a buildout). Deliberately
+        # *not* under `parts` (that tree is meant to be disposable/
+        # regenerated, e.g. on a varnish-build recompile, which would lose
+        # this runtime state) and keyed by this part's own name so multiple
+        # varnish instances in the same buildout don't collide. A `name`
+        # starting with "/" is used by varnishd as an absolute
+        # working-directory path directly (see the `name` option docs in
+        # README.rst).
+        self.options.setdefault(
+            "name",
+            os.path.join(buildout["buildout"]["directory"], "var", self.name),
+        )
         self.options.setdefault("cache-type", "file")
         self.options.setdefault("cache-size", "256M")
         self.options.setdefault("runtime-parameters", "")

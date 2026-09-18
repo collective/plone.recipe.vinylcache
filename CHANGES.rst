@@ -4,6 +4,18 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- Default ``plone.recipe.vinylcache:script``'s ``name`` option (which maps
+  to ``varnishd -n``, controlling its working directory) to
+  ``${buildout:directory}/var/<part name>`` instead of leaving it unset.
+  Without it, ``varnishd`` picks its own system default working directory
+  (typically under ``/var/run``), which requires root and is the most
+  common "Permission denied: Cannot create working directory" trap when
+  running ``varnishd`` unprivileged from a buildout. Deliberately placed
+  under ``var``, not ``parts`` (which is disposable/regenerated e.g. on a
+  ``varnish-build`` recompile), and keyed by the part's own name so
+  multiple instances in one buildout don't collide. Set ``name``
+  explicitly to override. [mamico]
+
 - BUGFIX: revert to legacy (``pkg_resources``-declared) ``plone``/
   ``plone.recipe`` namespace packages (restoring ``plone/__init__.py``
   and ``plone/recipe/__init__.py``, and ``namespace_packages=`` in
