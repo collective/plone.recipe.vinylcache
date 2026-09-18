@@ -61,6 +61,7 @@ Check the contents of the control script are correct::
         -P "...sample-buildout/parts/varnish/varnish.pid" \
         -a 127.0.0.1:8000 \
         -s file,"...sample-buildout/parts/varnish/storage",256M \
+        -n ...sample-buildout/var/varnish \
         "$@"
     <BLANKLINE>
 
