@@ -18,10 +18,10 @@ jobs:
         # py3.8 dropped: Plone's floating "-latest" requirements.txt files
         # now pin setuptools/packaging releases with no py3.8 wheels
         # (matches upstream plone.recipe.varnish, which dropped py3.8 for
-        # the same reason).
+        # the same reason). py39 is only combined with plone60: Plone's
+        # 6.1/6.2-latest requirements.txt now pin a pip release requiring
+        # Python>=3.10.
         - ["3.9",    "py39-plone60"]
-        - ["3.9",    "py39-plone61"]
-        - ["3.9",    "py39-plone62"]
         - ["3.10",   "py310-plone60"]
         - ["3.10",   "py310-plone61"]
         - ["3.10",   "py310-plone62"]

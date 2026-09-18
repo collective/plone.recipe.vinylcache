@@ -4,6 +4,10 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- CI: py39 is only tested against Plone 6.0 -- Plone's floating
+  ``6.1-latest``/``6.2-latest`` requirements.txt now pin a ``pip``
+  release requiring Python>=3.10. [mamico]
+
 - Fork of `plone.recipe.varnish <https://pypi.org/project/plone.recipe.varnish/>`_,
   created to track the Varnish Cache -> Vinyl Cache project rename (early
   2026) and the new 9.0.x stable release line. All credit for the original
