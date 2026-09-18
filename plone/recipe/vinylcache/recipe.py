@@ -499,7 +499,8 @@ class SelfSignedCertRecipe(BaseRecipe):
 
     def install(self):
         if not os.path.exists(self.options["location"]):
-            os.mkdir(self.options["location"])
+            # 0o700: this directory holds private key material.
+            os.mkdir(self.options["location"], 0o700)
             self.options.created(self.options["location"])
 
         # Idempotent: don't regenerate (and so don't rotate/invalidate) an
@@ -525,16 +526,24 @@ class SelfSignedCertRecipe(BaseRecipe):
                 self.options["common-name"],
             )
             system(cmd)
+            # openssl writes the key with the process' default umask (often
+            # world/group-readable); it's private key material, restrict it.
+            os.chmod(self.options["key-file"], 0o600)
             self.options.created(self.options["key-file"])
             self.options.created(self.options["cert-file"])
 
         # hitch/varnishd's -A pem-file directive expects cert and key
-        # concatenated into a single file.
+        # concatenated into a single file. It also contains the private
+        # key, so write it with restricted permissions from the start
+        # rather than creating it world-readable and fixing it up after.
         with open(self.options["cert-file"]) as fio:
             cert_data = fio.read()
         with open(self.options["key-file"]) as fio:
             key_data = fio.read()
-        with open(self.options["combined-file"], "wt") as fio:
+        fd = os.open(
+            self.options["combined-file"], os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600
+        )
+        with os.fdopen(fd, "wt") as fio:
             fio.write(cert_data)
             fio.write(key_data)
         self.options.created(self.options["combined-file"])

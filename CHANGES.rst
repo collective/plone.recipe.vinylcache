@@ -59,7 +59,10 @@ Changelog
     won't regenerate an already-present certificate on later buildout
     runs) plus a ready-to-use ``-A``-style config file, for pairing with
     ``tls-config`` in internal/dev/testing setups where a CA-issued
-    certificate isn't warranted.
+    certificate isn't warranted. The key file, the combined cert+key
+    file, and the directory holding them are all written with
+    restricted permissions (0600/0600/0700) since they contain private
+    key material.
   [mamico]
 
 - Default ``plone.recipe.vinylcache:script``'s ``name`` option (which maps
