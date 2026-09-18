@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from setuptools import find_namespace_packages
+from setuptools import find_packages
 from setuptools import setup
 
 
@@ -31,7 +31,8 @@ setup(
     python_requires=">=3.9",
     url="https://pypi.python.org/pypi/plone.recipe.vinylcache",
     license="BSD",
-    packages=find_namespace_packages(include=["plone.*"]),
+    packages=find_packages(exclude=["ez_setup"]),
+    namespace_packages=["plone", "plone.recipe"],
     include_package_data=True,
     zip_safe=False,
     install_requires=[

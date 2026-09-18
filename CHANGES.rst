@@ -4,6 +4,21 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- BUGFIX: revert to legacy (``pkg_resources``-declared) ``plone``/
+  ``plone.recipe`` namespace packages (restoring ``plone/__init__.py``
+  and ``plone/recipe/__init__.py``, and ``namespace_packages=`` in
+  ``setup.py``) instead of pure PEP 420 native namespaces. Real-world
+  Plone buildouts still mix in many ``plone.*`` eggs that declare the
+  namespace the legacy way; when this package was native-only, its
+  develop egg became invisible to ``zc.buildout``'s ``pkg_resources``-
+  based dependency/recipe resolution as soon as it was combined with
+  those other eggs in the same buildout (reproduced with a real
+  Plone-buildout-shaped setup: worked in isolation, failed with
+  "Couldn't find index page for 'plone.recipe.vinylcache'" once other
+  legacy-``plone``-namespace eggs were also present -- the exact same
+  root cause as the ``zc.recipe.testrunner`` CI fix above, this time
+  hitting real users). [mamico]
+
 - CI: py39 is only tested against Plone 6.0 -- Plone's floating
   ``6.1-latest``/``6.2-latest`` requirements.txt now pin a ``pip``
   release requiring Python>=3.10. [mamico]
