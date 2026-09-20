@@ -365,24 +365,36 @@ inside the cookie-pass block::
     True
 
 
-Purge by id (collective.purgebyid / xkey)
-------------------------------------------
+Purge by id (collective.purgebyid: ban or xkey mode)
+------------------------------------------------------
 
-Off by default -- must not emit an `xkey` import (it's only actually
-compiled when `compile-vmods = true`), nor the purge-by-id endpoint::
+Off by default -- must not emit an `xkey` import, nor the purge-by-id
+endpoint::
 
-    >>> config['purgebyid'] = False
+    >>> config['purgebyid'] = 'off'
     >>> result = VclGenerator(config)()
     >>> 'import xkey;' in result
     False
     >>> '/@@purgebyid/' in result
     False
 
-When enabled, the generator wires in the xkey import, the
-X-Ids-Involved -> xkey header translation, and the /@@purgebyid/<id>
-endpoint::
+"ban" mode (also "on") needs no vmod: it purges via a ban() matching
+the X-Ids-Involved header collective.purgebyid already sets, left
+untouched on the object::
 
-    >>> config['purgebyid'] = True
+    >>> config['purgebyid'] = 'ban'
+    >>> result = VclGenerator(config)()
+    >>> 'import xkey;' in result
+    False
+    >>> 'ban("obj.http.x-ids-involved ~ #" + regsub(req.url, "^/@@purgebyid/", "") + "#");' in result
+    True
+    >>> 'set beresp.http.xkey' in result
+    False
+
+"xkey" mode wires in the xkey import, the X-Ids-Involved -> xkey header
+translation, and calls xkey.purge() instead of ban()::
+
+    >>> config['purgebyid'] = 'xkey'
     >>> result = VclGenerator(config)()
     >>> 'import xkey;' in result
     True

@@ -174,12 +174,25 @@ class ConfigureRecipe(BaseRecipe):
                 "buildout configuration."
             )
         self.options.setdefault("verbose-headers", "off")
-        # collective.purgebyid-compatible secondary-key purging via the
-        # `xkey` vmod. Off by default: `xkey` is only actually compiled
-        # when `[varnish-build] compile-vmods = true` is set, so emitting
-        # `import xkey;` unconditionally would break compilation for
-        # anyone who hasn't opted into building vmods.
+        # collective.purgebyid compatibility. Two modes:
+        # - "ban" (also "on"): ban()-based, no vmod needed, works
+        #   everywhere. Matches collective.purgebyid's own non-xkey
+        #   fallback.
+        # - "xkey": uses the `xkey` vmod's secondary-key purge instead of
+        #   a ban scan; more efficient, but requires
+        #   `[varnish-build] compile-vmods = true` (the `xkey` import is
+        #   only emitted in this mode, so "off"/"ban" never break
+        #   compilation for setups that haven't built vmods).
         self.options.setdefault("purge-by-id", "off")
+        purgebyid = self.options["purge-by-id"].strip().lower()
+        if purgebyid == "on":
+            purgebyid = "ban"
+        if purgebyid not in ("off", "ban", "xkey"):
+            self._log_and_raise(
+                "Invalid value for 'purge-by-id': {0!r}. Must be one of "
+                "'off', 'ban'/'on' or 'xkey'.".format(self.options["purge-by-id"])
+            )
+        self.options["purge-by-id"] = purgebyid
         self.options.setdefault("balancer", "none")
         self.options.setdefault("backends", "127.0.0.1:8080")
         self.options.setdefault(
@@ -294,7 +307,7 @@ class ConfigureRecipe(BaseRecipe):
         # enable verbose (diagnostic) response headers: X-Cache, X-Cacheable,
         # grace. Off by default to avoid leaking cache internals to clients.
         config["verbose"] = self.options["verbose-headers"] == "on"
-        config["purgebyid"] = self.options["purge-by-id"] == "on"
+        config["purgebyid"] = self.options["purge-by-id"]
         config["gracehealthy"] = self.options.get("grace-healthy", None)
         config["gracesick"] = self.options.get("grace-sick", "600s")
         config["healthprobeurl"] = self.options.get("health-probe-url", None)

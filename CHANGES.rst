@@ -52,14 +52,16 @@ Changelog
   - New ``purge-by-id`` option (default ``off``) for
     ``plone.recipe.vinylcache:configuration``, compatible with
     `collective.purgebyid <https://github.com/collective/collective.purgebyid>`_:
-    when a backend response carries an ``X-Ids-Involved`` header
-    (``#uuid1#uuid2#...#``), it's translated into the ``xkey`` vmod's
-    secondary-key header, and ``GET /@@purgebyid/<id>`` purges every
-    cached object tagged with that id via ``xkey.purge()`` -- without
-    needing to enumerate every cached URL variant of that content.
-    Requires ``[varnish-build] compile-vmods = true`` (the ``xkey``
-    import is only emitted when this option is on, so it never breaks
-    compilation for anyone who hasn't opted into building vmods).
+    ``GET /@@purgebyid/<id>`` purges every cached object tagged with
+    that id (via the backend's ``X-Ids-Involved`` header) without
+    needing to enumerate every cached URL variant of that content. Two
+    modes: ``ban`` (also ``on``, the default when enabled) purges via
+    ``ban()`` and needs no vmod, matching a real-world production
+    pattern found in the wild that avoids the vmod-compile step
+    entirely; ``xkey`` purges via the ``xkey`` vmod's secondary-key
+    support instead (more efficient, requires
+    ``[varnish-build] compile-vmods = true`` -- the ``xkey`` import is
+    only emitted in this mode).
   - New ``tls-config`` option for ``plone.recipe.vinylcache:script``,
     mapping to ``varnishd -A`` (a Vinyl Cache 9.0 addition letting
     ``varnishd`` terminate TLS itself via a hitch-like config file,

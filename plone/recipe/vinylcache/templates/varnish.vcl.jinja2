@@ -8,10 +8,10 @@
 vcl {{vcl_version}};
 
 import std;
-{% if purgebyid %}
+{% if purgebyid == 'xkey' %}
 # collective.purgebyid-compatible secondary-key purging. Requires the
 # `xkey` vmod to actually be compiled and available (`[varnish-build]
-# compile-vmods = true`), since purge-by-id = on is what emits this
+# compile-vmods = true`), since purge-by-id = xkey is what emits this
 # import.
 import xkey;
 {% endif %}
@@ -147,17 +147,22 @@ sub vcl_recv {
             # request won't go to the backend.
             return(synth(200, "Ban added"));
     }
-    {% if purgebyid %}
+    {% if purgebyid != 'off' %}
 
-    # collective.purgebyid compatibility: a request for
-    # /@@purgebyid/<id> purges every cached object that was tagged with
-    # that id via the `xkey` response header (see vcl_backend_response).
+    # collective.purgebyid compatibility: a request for /@@purgebyid/<id>
+    # purges every cached object that was tagged with that id by the
+    # backend via the X-Ids-Involved response header (see
+    # vcl_backend_response).
     if (req.url ~ "^/@@purgebyid/") {
         if (!client.ip ~ list_purge) {
             return (synth(403, "Not allowed."));
         }
-        set req.http.X-Purged-Count = xkey.purge(regsub(req.url, "^/@@purgebyid/", ""));
-        return (synth(200, "Purged " + req.http.X-Purged-Count + " objects"));
+        {% if purgebyid == 'xkey' %}
+        xkey.purge(regsub(req.url, "^/@@purgebyid/", ""));
+        {% else %}
+        ban("obj.http.x-ids-involved ~ #" + regsub(req.url, "^/@@purgebyid/", "") + "#");
+        {% endif %}
+        return (synth(200, "Purged"));
     }
     {% endif %}
 
@@ -346,14 +351,17 @@ sub vcl_backend_response {
     if (bereq.url ~ "^[^?]*\.(mp3|mp4|mkv|avi|7z|rar|tar|tgz|gz|zip|iso|wav|pdf|dmg)(\?.*)?$") {
         set beresp.do_stream = true;
     }
-    {% if purgebyid %}
+    {% if purgebyid == 'xkey' %}
 
-    # collective.purgebyid compatibility: the backend tags a response
-    # with every content id it involved via
+    # collective.purgebyid compatibility (xkey mode): the backend tags a
+    # response with every content id it involved via
     # X-Ids-Involved: #uuid1#uuid2#...#
     # The `xkey` vmod expects its own keys as a space/comma-separated
     # list in a response header literally named `xkey`, so translate one
-    # into the other and drop the original (not meant for clients).
+    # into the other and drop the original (not meant for clients). In
+    # "ban" mode (the default when purge-by-id is on), X-Ids-Involved is
+    # left as-is: it needs to stick around as an object header for
+    # ban()'s "obj.http.x-ids-involved" match to work.
     if (beresp.http.X-Ids-Involved) {
         set beresp.http.xkey = regsuball(beresp.http.X-Ids-Involved, "#", " ");
         unset beresp.http.X-Ids-Involved;

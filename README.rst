@@ -68,8 +68,9 @@ fork adds a handful of things not present in ``plone.recipe.varnish``:
   default).
 * A new ``purge-by-id`` option, compatible with `collective.purgebyid
   <https://github.com/collective/collective.purgebyid>`_, for purging
-  every cached variant of a piece of content by id via the ``xkey``
-  vmod, rather than needing to enumerate cached URLs.
+  every cached variant of a piece of content by id rather than needing
+  to enumerate cached URLs -- via ``ban()`` (default, no vmod needed) or
+  via the ``xkey`` vmod (opt-in, more efficient).
 * A new ``tls-config`` option (``script``) mapping to ``varnishd -A``, a
   Vinyl Cache 9.0 addition letting ``varnishd`` terminate TLS itself.
 * A new ``plone.recipe.vinylcache:selfsigned`` recipe to generate a
@@ -378,16 +379,21 @@ These options are available for the recipe part plone.recipe.vinylcache:configur
 ``purge-by-id``
     Enables `collective.purgebyid
     <https://github.com/collective/collective.purgebyid>`_-compatible
-    secondary-key purging via the ``xkey`` vmod: a backend response
-    carrying an ``X-Ids-Involved: #uuid1#uuid2#...#`` header gets every
-    id translated into an ``xkey`` secondary cache key, and
+    purging: a backend response carrying an
+    ``X-Ids-Involved: #uuid1#uuid2#...#`` header gets those ids
+    associated with the cached object, and
     ``GET /@@purgebyid/<id>`` (from an IP allowed by ``purge-hosts``)
     purges every cached object tagged with that id -- without needing to
     enumerate every cached URL variant of that content. Possible values:
-    ``on`` or ``off`` (default). Requires
-    ``[varnish-build] compile-vmods = true``: the ``xkey`` VCL import is
-    only emitted when this option is ``on``, so leaving it ``off`` never
-    breaks compilation for setups that haven't built vmods.
+
+    * ``off`` (default): disabled.
+    * ``ban`` (also ``on``): purges via a ``ban()`` matching the
+      ``X-Ids-Involved`` header. No vmod required, works everywhere.
+    * ``xkey``: purges via the ``xkey`` vmod's secondary-key support
+      instead of a ban scan; more efficient on busy caches, but requires
+      ``[varnish-build] compile-vmods = true`` (the ``xkey`` VCL import
+      is only emitted in this mode, so ``off``/``ban`` never break
+      compilation for setups that haven't built vmods).
 
 ``verbose-headers``
     Enable sending extra diagnostic response headers (``X-Cache``,
