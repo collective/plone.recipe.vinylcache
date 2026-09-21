@@ -308,6 +308,12 @@ class ConfigureRecipe(BaseRecipe):
         # grace. Off by default to avoid leaking cache internals to clients.
         config["verbose"] = self.options["verbose-headers"] == "on"
         config["purgebyid"] = self.options["purge-by-id"]
+        # Objects larger than this (by Content-Length) are never cached.
+        # Without a limit, a single very large object can nuke a large
+        # fraction of the cache under LRU pressure to make room for
+        # itself; unset (the default) means no size limit is applied.
+        # Value must be a valid VCL BYTES literal, e.g. "50MB", "1GB".
+        config["maxcacheablesize"] = self.options.get("max-cacheable-size", None)
         config["gracehealthy"] = self.options.get("grace-healthy", None)
         config["gracesick"] = self.options.get("grace-sick", "600s")
         config["healthprobeurl"] = self.options.get("health-probe-url", None)

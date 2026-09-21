@@ -133,6 +133,7 @@ class VclGenerator(object):
         data["code404page"] = self.cfg["code404page"]
         data["verbose"] = self.cfg.get("verbose", False)
         data["purgebyid"] = self.cfg.get("purgebyid", "off")
+        data["maxcacheablesize"] = self.cfg.get("maxcacheablesize", None)
         data["gracehealthy"] = self.cfg["gracehealthy"]
         data["gracesick"] = self.cfg["gracesick"]
         data["healthprobeurl"] = self.cfg.get("healthprobeurl") or "/ok"

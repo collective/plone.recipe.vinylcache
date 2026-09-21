@@ -28,20 +28,6 @@ Area's this recipe could further be improved.
   see this blog post on the Varnish Software website:
   https://info.varnish-software.com/blog/proper-sticky-session-load-balancing-varnish
 
-* Enable compilation/adding Vinyl Cache modules (VMOD's). This is really
-  painfull. There a a few really usefull vmods that can simplify required
-  vcl for cookie sanitizing, header manipulation etc.
-  https://github.com/varnish/varnish-modules contains a repo of several of
-  these modules. I have looked and tries this, but to compile extra vmods
-  you first need to build Vinyl Cache itself from source and vmod
-  distributions require access to several M4 macro files from the
-  Extracted source distribution. So you need a 2 phase build step and
-  'nested' CMMI so that the modules compilation can refer to the still
-  extracted source files. IMHO launching Vinyl Cache as a container from
-  an already prepped image with all modules built in or reusing binary
-  packages from Linux distributions is the future of distributing these
-  kind of software packages.
-
 * Expose unix-domain-socket backends (the VCL template already renders a
   ``.path`` backend when a backend dict has a ``path`` key, see
   ``vclgen.py``/the VCL template) through the ``backends =`` option

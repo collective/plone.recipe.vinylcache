@@ -71,6 +71,9 @@ fork adds a handful of things not present in ``plone.recipe.varnish``:
   every cached variant of a piece of content by id rather than needing
   to enumerate cached URLs -- via ``ban()`` (default, no vmod needed) or
   via the ``xkey`` vmod (opt-in, more efficient).
+* A new ``max-cacheable-size`` option: objects larger than this (by
+  ``Content-Length``) are never cached, preventing a single large object
+  from evicting many smaller ones under LRU pressure.
 * A new ``tls-config`` option (``script``) mapping to ``varnishd -A``, a
   Vinyl Cache 9.0 addition letting ``varnishd`` terminate TLS itself.
 * A new ``plone.recipe.vinylcache:selfsigned`` recipe to generate a
@@ -394,6 +397,14 @@ These options are available for the recipe part plone.recipe.vinylcache:configur
       ``[varnish-build] compile-vmods = true`` (the ``xkey`` VCL import
       is only emitted in this mode, so ``off``/``ban`` never break
       compilation for setups that haven't built vmods).
+
+``max-cacheable-size``
+    Objects whose backend response ``Content-Length`` exceeds this value
+    are never cached (``beresp.uncacheable = true``). Unset (default): no
+    size limit. Value must be a valid VCL BYTES literal, e.g. ``50MB`` or
+    ``1GB``. Without a limit, a single object near or above the cache's
+    size can, under LRU pressure, evict a large fraction of the cache
+    just to make room for itself.
 
 ``verbose-headers``
     Enable sending extra diagnostic response headers (``X-Cache``,

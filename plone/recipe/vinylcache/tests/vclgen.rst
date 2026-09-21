@@ -402,3 +402,27 @@ translation, and calls xkey.purge() instead of ban()::
     True
     >>> 'xkey.purge(regsub(req.url, "^/@@purgebyid/", ""))' in result
     True
+
+
+Max cacheable size
+-------------------
+
+Unset (the default) -- no size-based uncacheable check emitted::
+
+    >>> config['purgebyid'] = 'off'
+    >>> config['maxcacheablesize'] = None
+    >>> result = VclGenerator(config)()
+    >>> 'std.bytes(beresp.http.content-length' in result
+    False
+
+Set -- objects with a Content-Length over the given BYTES literal are
+marked uncacheable in vcl_backend_response::
+
+    >>> config['maxcacheablesize'] = '50MB'
+    >>> result = VclGenerator(config)()
+    >>> 'if (std.bytes(beresp.http.content-length, 0B) > 50MB) {' in result
+    True
+    >>> 'set beresp.http.X-Cacheable = "NO - too large to cache";' in result
+    True
+    >>> 'set beresp.uncacheable = true;' in result
+    True

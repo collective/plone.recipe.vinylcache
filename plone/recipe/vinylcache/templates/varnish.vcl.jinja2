@@ -351,6 +351,17 @@ sub vcl_backend_response {
     if (bereq.url ~ "^[^?]*\.(mp3|mp4|mkv|avi|7z|rar|tar|tgz|gz|zip|iso|wav|pdf|dmg)(\?.*)?$") {
         set beresp.do_stream = true;
     }
+    {% if maxcacheablesize %}
+
+    # Never cache objects larger than this. Without a limit, one very
+    # large object can nuke a large fraction of the cache under LRU
+    # pressure just to make room for itself, evicting many still-useful
+    # smaller objects along the way.
+    if (std.bytes(beresp.http.content-length, 0B) > {{maxcacheablesize}}) {
+        set beresp.http.X-Cacheable = "NO - too large to cache";
+        set beresp.uncacheable = true;
+    }
+    {% endif %}
     {% if purgebyid == 'xkey' %}
 
     # collective.purgebyid compatibility (xkey mode): the backend tags a

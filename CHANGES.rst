@@ -66,6 +66,14 @@ Changelog
     mapping to ``varnishd -A`` (a Vinyl Cache 9.0 addition letting
     ``varnishd`` terminate TLS itself via a hitch-like config file,
     instead of needing a separate TLS terminator in front of it).
+  - New ``max-cacheable-size`` option for
+    ``plone.recipe.vinylcache:configuration`` (default: unset, no limit).
+    Objects whose backend response ``Content-Length`` exceeds this value
+    (a VCL BYTES literal, e.g. ``50MB``) are marked uncacheable in
+    ``vcl_backend_response``. Without a limit, a single very large
+    object can nuke a large fraction of the cache under LRU pressure
+    just to make room for itself, evicting many still-useful smaller
+    objects along the way.
   - New ``plone.recipe.vinylcache:selfsigned`` recipe: generates a
     self-signed certificate/key (via ``openssl``, idempotently -- it
     won't regenerate an already-present certificate on later buildout
