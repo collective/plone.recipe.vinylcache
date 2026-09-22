@@ -94,6 +94,16 @@ class BaseRecipe(object):
 
 class BuildRecipe(CMMIRecipe, BaseRecipe):
     def __init__(self, buildout, name, options):
+        # An inherited/extended buildout.cfg may declare "url =" with no
+        # value as a placeholder meant to be overridden downstream.
+        # setdefault() below leaves that empty string in place (the key
+        # already exists), which zc.recipe.cmmi then hands to
+        # zc.buildout.download.Download() as if it were a local path,
+        # failing with "FileNotFoundError: [Errno 2] No such file or
+        # directory: ''" instead of falling back to our default. Drop it
+        # first so setdefault() actually applies.
+        if "url" in options and not options["url"]:
+            del options["url"]
         BaseRecipe.__init__(self, buildout, name, options)
         self.options.setdefault("url", DOWNLOAD_URL)
         self.options.setdefault("jobs", "4")
@@ -111,6 +121,9 @@ class BuildRecipe(CMMIRecipe, BaseRecipe):
             vmods_options = {
                 k[6:]: v for k, v in self.options.items() if k.startswith("vmods_")
             }
+            # Same empty-placeholder issue as the main "url" option above.
+            if "url" in vmods_options and not vmods_options["url"]:
+                del vmods_options["url"]
             vmods_options.setdefault("url", VMODS_DOWNLOAD_URL)
             vmods_options.setdefault("source-directory-contains", "bootstrap")
             vmods_options.setdefault("configure-command", "./bootstrap; ./configure")

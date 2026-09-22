@@ -4,6 +4,17 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- BUGFIX: ``plone.recipe.vinylcache:build``'s ``url`` (and
+  ``vmods_url``) option now falls back to the built-in default download
+  URL when set to an *empty* string, not just when entirely absent. An
+  inherited/extended ``buildout.cfg`` declaring ``url =`` with no value
+  as a placeholder for a downstream override previously made
+  ``setdefault()`` a no-op (the key already existed), which
+  ``zc.recipe.cmmi`` then handed to ``zc.buildout.download.Download()``
+  as if it were a local path, failing with ``FileNotFoundError: [Errno
+  2] No such file or directory: ''`` instead of using the default.
+  [mamico]
+
 - BUGFIX: the new default ``name`` (``${buildout:directory}/var/<part
   name>``, see above) broke ``varnishd`` startup and even ``varnishd -C``
   syntax checks with "Error: Cannot create working directory ...: No
