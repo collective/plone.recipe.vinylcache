@@ -94,8 +94,10 @@ Add one backend as *2-tuple* (w/o url), the one host scenario::
     ...     }
     ... ]
     >>> vg = VclGenerator(config)
-    >>> pprint(vg._vhostings([]))
-    [{'setters': OrderedDict([('req.backend_hint', 'backend_000')])}]
+    >>> from collections import OrderedDict
+    >>> vg._vhostings([]) == [
+    ...     {'setters': OrderedDict([('req.backend_hint', 'backend_000')])}]
+    True
 
 
 Two backends, one with host match, other one with url match, third with both,
@@ -246,9 +248,10 @@ Unix domain sockets as backend addresses::
     ... ]
 
     >>> vg = VclGenerator(config)
-    >>> pprint(vg._vhostings(directors))
-    [{'match': 'req.http.host ~ "^foo.org(:[0-9]+)?$"',
-      'setters': OrderedDict([('req.backend_hint', 'backend_030')])}]
+    >>> vg._vhostings(directors) == [
+    ...     {'match': 'req.http.host ~ "^foo.org(:[0-9]+)?$"',
+    ...      'setters': OrderedDict([('req.backend_hint', 'backend_030')])}]
+    True
 
 Generate!
 

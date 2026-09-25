@@ -15,19 +15,17 @@ jobs:
       matrix:
         config:
         # [Python version, tox env]
-        # py3.8 dropped: Plone's floating "-latest" requirements.txt files
-        # now pin setuptools/packaging releases with no py3.8 wheels
-        # (matches upstream plone.recipe.varnish, which dropped py3.8 for
-        # the same reason). py39 is only combined with plone60: Plone's
-        # 6.1/6.2-latest requirements.txt now pin a pip release requiring
-        # Python>=3.10.
-        - ["3.9",    "py39-plone60"]
+        # py3.9 dropped. py3.12/py3.13 are combined with plone62 only, to
+        # cover the latest Python releases against the latest Plone line
+        # without exploding the matrix.
         - ["3.10",   "py310-plone60"]
         - ["3.10",   "py310-plone61"]
         - ["3.10",   "py310-plone62"]
         - ["3.11",   "py311-plone60"]
         - ["3.11",   "py311-plone61"]
         - ["3.11",   "py311-plone62"]
+        - ["3.12",   "py312-plone62"]
+        - ["3.13",   "py313-plone62"]
     name: ${{ matrix.config[1] }}
     steps:
       - uses: actions/checkout@v4

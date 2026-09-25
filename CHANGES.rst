@@ -4,6 +4,13 @@ Changelog
 9.0.3.0.dev0 (unreleased)
 -------------------------
 
+- Moved the package source to a ``src`` layout and migrated packaging
+  metadata from ``setup.py`` to ``pyproject.toml`` (``setup.py`` now only
+  carries the legacy ``namespace_packages``/``packages``/``package_dir``
+  arguments that PEP 621's ``[project]`` table cannot express). Dropped
+  Python 3.9 support, added 3.12 and 3.13.
+  [mamico]
+
 - BUGFIX: ``plone.recipe.vinylcache:build``'s ``url`` (and
   ``vmods_url``) option now falls back to the built-in default download
   URL when set to an *empty* string, not just when entirely absent. An

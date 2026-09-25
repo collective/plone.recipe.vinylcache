@@ -1,3 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plone.recipe.vinylcache"
+# versioning scheme: positions 1-3 match the exact supported Vinyl Cache
+# (formerly Varnish Cache) release, currently 9.0.3. Position 4:
+# plone.recipe.vinylcache's own patch release number.
+version = "9.0.3.0.dev0"
+description = "Build and/or configure Vinyl Cache (formerly Varnish Cache) with zc.buildout"
+dynamic = ["readme"]
+license = { text = "BSD" }
+authors = [{ name = "Wichert Akkerman, et al", email = "wichert@wiggy.net" }]
+keywords = ["buildout", "varnish", "vinylcache", "vinyl-cache", "cache", "proxy"]
+requires-python = ">=3.10"
+classifiers = [
+    "Framework :: Buildout",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: Proxy Servers",
+    "Development Status :: 4 - Beta",
+]
+dependencies = [
+    "jinja2>=3.0",
+    "setuptools",
+    "zc.buildout",
+    "zc.recipe.cmmi",
+]
+
+[project.optional-dependencies]
+test = ["interlude"]
+
+[project.urls]
+Homepage = "https://pypi.python.org/pypi/plone.recipe.vinylcache"
+
+[project.entry-points."zc.buildout"]
+build = "plone.recipe.vinylcache.recipe:BuildRecipe"
+configuration = "plone.recipe.vinylcache.recipe:ConfigureRecipe"
+script = "plone.recipe.vinylcache.recipe:ScriptRecipe"
+selfsigned = "plone.recipe.vinylcache.recipe:SelfSignedCertRecipe"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.dynamic]
+readme = { file = ["README.rst", "CHANGES.rst"] }
+
 [tool.isort]
 profile = "black"
 force_alphabetical_sort = true
@@ -21,5 +76,5 @@ pylint = ["+*"]
 # No zpretty
 checkers = ["black", "flake8", "isort", "pyroma",]
 formatters = ["black", "isort",]
-paths = "plone/"
+paths = "src/plone/"
 paths_pyroma = "."
