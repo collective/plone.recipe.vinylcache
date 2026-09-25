@@ -1,10 +1,12 @@
 Changelog
 =========
 
-9.0.3.1 (unreleased)
+9.0.4.0 (unreleased)
 --------------------
 
-- Nothing changed yet.
+- Update the default download URL to Vinyl Cache 9.0.4
+  (`release notes <https://github.com/varnish/varnish/releases/tag/varnish-9.0.4>`_).
+  [github-actions]
 
 
 9.0.3.0 (2026-09-25)
