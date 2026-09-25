@@ -1,8 +1,8 @@
 Changelog
 =========
 
-9.0.3.0.dev0 (unreleased)
--------------------------
+9.0.3.0 (2026-09-25)
+--------------------
 
 - Moved the package source to a ``src`` layout and migrated packaging
   metadata from ``setup.py`` to ``pyproject.toml`` (``setup.py`` now only
