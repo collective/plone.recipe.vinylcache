@@ -20,7 +20,7 @@ import zc.buildout
 # otherwise.
 DOWNLOAD_URL = (
     "https://github.com/varnish/varnish/releases/download/"
-    "varnish-9.0.4/varnish-9.0.4.tar.gz"
+    "varnish-9.1.0/varnish-9.1.0.tar.gz"
 )
 # varnish-modules (vmods like header/xkey) dropped support for Varnish 6.0
 # LTS as of the releases targeting 7.0+; this tag targets the 9.0 line.

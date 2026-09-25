@@ -259,7 +259,7 @@ is built as ``varnishd`` and its version banner is produced by
 revision <git-sha>)``)::
 
     >>> output = system(varnishd + ' -V')
-    >>> if 'varnishd (varnish-9.0.' not in output:
+    >>> if 'varnishd (varnish-9.1.' not in output:
     ...     print(output)
 
 Test a buildout with multiple backends for path-based virtual hosting: two backends
