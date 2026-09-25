@@ -8,7 +8,6 @@ import os
 import re
 import zc.buildout
 
-
 # Vinyl Cache (the project/company formerly known as Varnish Cache/Varnish
 # Software) 9.0.x is the current stable line this recipe targets. NOTE:
 # despite the project rename, the actual 9.0.x *source release* is still

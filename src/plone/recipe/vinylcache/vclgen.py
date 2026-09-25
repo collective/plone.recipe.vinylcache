@@ -5,7 +5,6 @@ from zc.buildout import UserError
 
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 # Neutral name on purpose: this recipe targets exactly one upstream version
@@ -89,10 +88,9 @@ class VclGenerator(object):
             elif backend["url"].find(":") != -1:
                 # match backend based on hostname and path
                 hostname, path = backend["url"].split(":", 1)
-                vh[
-                    "match"
-                ] = 'req.http.host ~ "^{0}(:[0-9]+)?$" && ' 'req.url ~ "^/{1}"'.format(
-                    hostname, path.lstrip(":/")
+                vh["match"] = (
+                    'req.http.host ~ "^{0}(:[0-9]+)?$" && '
+                    'req.url ~ "^/{1}"'.format(hostname, path.lstrip(":/"))
                 )
             else:
                 # set backend based on hostname
