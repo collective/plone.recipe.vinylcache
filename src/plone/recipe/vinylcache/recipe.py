@@ -450,15 +450,18 @@ class ScriptRecipe(BaseRecipe):
         )
 
     def install(self):
+        if not os.path.exists(self.options["location"]):
+            os.mkdir(self.options["location"])
+            self.options.created(self.options["location"])
         if "cache-location" not in self.options:
-            if not os.path.exists(self.options["location"]):
-                os.mkdir(self.options["location"])
-                self.options.created(self.options["location"])
+            # Like `name` above: under `var`, not `parts`, and keyed by this
+            # part's name. A sibling of the default working directory rather
+            # than inside it, so it doesn't mix with varnishd's own files.
             self.options["cache-location"] = os.path.join(
-                self.options["location"], "storage"
+                self.buildout["buildout"]["directory"], "var", self.name + "-storage"
             )
             if not os.path.exists(self.options["cache-location"]):
-                os.mkdir(self.options["cache-location"])
+                os.makedirs(self.options["cache-location"])
                 self.options.created(self.options["cache-location"])
 
         # If `name` is an absolute path, it's used by varnishd as its

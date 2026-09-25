@@ -8,6 +8,13 @@ Changelog
   (`release notes <https://github.com/varnish/varnish/releases/tag/varnish-9.0.4>`_).
   [github-actions]
 
+- The default ``cache-location`` of the ``script`` recipe is now
+  ``var/<part name>-storage`` instead of ``parts/<part name>/storage``,
+  next to the default ``varnishd`` working directory: ``parts`` is meant
+  to be disposable. The part directory (which holds the pid file) is now
+  also created when ``cache-location`` is set explicitly.
+  [mamico]
+
 
 9.0.3.0 (2026-09-25)
 --------------------

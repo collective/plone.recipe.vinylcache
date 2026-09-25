@@ -497,8 +497,9 @@ Start Vinyl Cache as a daemon or in foreground with the given settings. These op
 ``cache-location``
     Customise the location for the Vinyl Cache file storage.  Option only
     applicable when used with the ``file`` cache-type option.  Defaults to
-    using a file named ``storage`` inside the relevant parts directory
-    (eg ``parts/varnish/storage``).  Changing the default location can be
+    a directory named after the part inside the buildout's ``var``
+    directory (eg ``var/varnish-storage``), so it survives a rebuild of
+    ``parts``.  Changing the default location can be
     useful in putting the storage somewhere with quicker read speeds
     (e.g. RAM disk).
 
