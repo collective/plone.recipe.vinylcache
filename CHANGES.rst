@@ -4,13 +4,28 @@ Changelog
 9.1.0.0 (unreleased)
 --------------------
 
-- Move to the Vinyl Cache 9.1.x release line: update the default download
-  URL to Vinyl Cache 9.1.0
-  (`release notes <https://github.com/varnish/varnish/releases/tag/varnish-9.1.0>`_)
-  and the default ``varnish-modules`` URL to release 0.29.0, the release
+- Move to the Vinyl Cache 9.1.x release line: the default download URL is
+  now the official ``https://vinyl-cache.org/downloads/vinyl-cache-9.1.0.tgz``
+  (`releases <https://code.vinyl-cache.org/vinyl-cache/vinyl-cache/releases>`_),
+  and the default ``varnish-modules`` URL is release 0.29.0, the release
   targeting 9.1 (0.28.0 targets 9.0 only: Vinyl Cache 9.1 removed
   ``varnish-legacy.m4`` and made the ``VCACHE_REQUIRE`` maximum version
   check exclusive). This recipe now supports Vinyl Cache 9.1.x only.
+  [mamico]
+
+- The official Vinyl Cache 9.1 sources install renamed executables
+  (``vinyld``, ``vinyladm``, ``vinyllog``, ...). The ``build`` part now
+  uses ``sbin/vinyld`` as ``daemon`` and adds symlinks with the previous
+  ``varnish*`` names (``varnishd``, ``varnishadm``, ...) for backwards
+  compatibility. The ``script`` part defaults to ``<build>/sbin/vinyld``.
+  [mamico]
+
+- The generated VCL no longer uses ``synthetic()``, removed in Vinyl Cache
+  9.1: ``vcl_synth`` now sets ``resp.body``.
+  [mamico]
+
+- The ``vinyl-update`` workflow now reads releases from
+  ``code.vinyl-cache.org``.
   [mamico]
 
 9.0.4.0 (unreleased)
