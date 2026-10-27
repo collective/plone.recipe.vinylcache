@@ -250,10 +250,10 @@ Check the contents of the control script reflect our new options::
         -S .../sample-buildout/var/varnish-Secret \
     ...
 
-Check that the built Vinyl Cache identifies itself as 9.0.x. NOTE: despite
+Check that the built Vinyl Cache identifies itself as 9.1.x. NOTE: despite
 the Varnish Cache -> Vinyl Cache project rename, the installed binary and
 its ``-V`` self-identification are still named/branded "varnish" as of the
-9.0.x line (verified against the actual upstream 9.0.3 source: the daemon
+9.1.x line (verified against the actual upstream 9.1.0 source: the daemon
 is built as ``varnishd`` and its version banner is produced by
 ``VCS_Message("varnishd")``, printing ``varnishd (varnish-<version>
 revision <git-sha>)``)::

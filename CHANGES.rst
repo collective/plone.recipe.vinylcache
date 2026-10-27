@@ -4,8 +4,14 @@ Changelog
 9.1.0.0 (unreleased)
 --------------------
 
-- Update the default download URL to Vinyl Cache 9.1.0
-  (`release notes <https://github.com/varnish/varnish/releases/tag/varnish-9.1.0>`_).
+- Move to the Vinyl Cache 9.1.x release line: update the default download
+  URL to Vinyl Cache 9.1.0
+  (`release notes <https://github.com/varnish/varnish/releases/tag/varnish-9.1.0>`_)
+  and the default ``varnish-modules`` URL to release 0.29.0, the release
+  targeting 9.1 (0.28.0 targets 9.0 only: Vinyl Cache 9.1 removed
+  ``varnish-legacy.m4`` and made the ``VCACHE_REQUIRE`` maximum version
+  check exclusive). This recipe now supports Vinyl Cache 9.1.x only.
+  [mamico]
 
 9.0.4.0 (unreleased)
 --------------------

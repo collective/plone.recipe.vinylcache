@@ -9,10 +9,10 @@ import re
 import zc.buildout
 
 # Vinyl Cache (the project/company formerly known as Varnish Cache/Varnish
-# Software) 9.0.x is the current stable line this recipe targets. NOTE:
-# despite the project rename, the actual 9.0.x *source release* is still
+# Software) 9.1.x is the current stable line this recipe targets. NOTE:
+# despite the project rename, the actual 9.1.x *source release* is still
 # published as a "varnish-X.Y.Z.tar.gz" tarball (PACKAGE_TARNAME is still
-# "varnish", confirmed by inspecting the real 9.0.3 configure.ac), and it
+# "varnish", confirmed by inspecting the real 9.1.0 configure.ac), and it
 # still builds/installs a binary literally called `varnishd` (confirmed via
 # the upstream Makefile.am: `sbin_PROGRAMS = varnishd`) -- only internal
 # source directories (e.g. bin/vinyld/) and branding/docs have been renamed
@@ -23,9 +23,9 @@ DOWNLOAD_URL = (
     "varnish-9.1.0/varnish-9.1.0.tar.gz"
 )
 # varnish-modules (vmods like header/xkey) dropped support for Varnish 6.0
-# LTS as of the releases targeting 7.0+; this tag targets the 9.0 line.
+# LTS as of the releases targeting 7.0+; this tag targets the 9.1 line.
 # The project itself is still hosted/named "varnish-modules" (not renamed).
-VMODS_DOWNLOAD_URL = "https://github.com/varnish/varnish-modules/archive/0.28.0.tar.gz"
+VMODS_DOWNLOAD_URL = "https://github.com/varnish/varnish-modules/archive/0.29.0.tar.gz"
 
 COOKIE_WHITELIST_DEFAULT = """\
 statusmessages
@@ -159,7 +159,7 @@ class BuildRecipe(CMMIRecipe, BaseRecipe):
 
         # set daemon location. Despite the Varnish Cache -> Vinyl Cache
         # project rename, the installed binary is still called `varnishd`
-        # as of Vinyl Cache 9.0.x (confirmed against the upstream source:
+        # as of Vinyl Cache 9.1.x (confirmed against the upstream source:
         # `sbin_PROGRAMS = varnishd` in bin/vinyld/Makefile.am).
         self.options["daemon"] = os.path.join(
             self.options["location"], "sbin", "varnishd"
