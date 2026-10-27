@@ -1,7 +1,7 @@
 Changelog
 =========
 
-9.1.0.0 (unreleased)
+9.1.0.0 (2026-10-27)
 --------------------
 
 - Move to the Vinyl Cache 9.1.x release line: the default download URL is
