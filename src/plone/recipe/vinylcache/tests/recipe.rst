@@ -10,7 +10,7 @@ works fine. It is based on zc.buildout testing module::
 
     >>> buildout_bin = os.path.join('bin', 'buildout')
     >>> varnish_bin = os.path.join('bin', 'varnish')
-    >>> varnishd = os.path.join('parts/varnish-build/sbin', 'varnishd')
+    >>> vinyld = os.path.join('parts/varnish-build/sbin', 'vinyld')
     >>> system = exec_system
 
 Let's create a minimum buildout that uses the current plone.recipe.vinylcache::
@@ -27,7 +27,7 @@ Let's create a minimum buildout that uses the current plone.recipe.vinylcache::
     ...
     ... [varnish-configuration]
     ... recipe = plone.recipe.vinylcache:configuration
-    ... daemon = ${varnish-build:location}/sbin/varnishd
+    ... daemon = ${varnish-build:location}/sbin/vinyld
     ... backends = 127.0.0.1:8081
     ... vcl_import = import header; import xkey;
     ...
@@ -56,7 +56,7 @@ Check the contents of the control script are correct::
 
     >>> print(open(varnish_bin).read())
     #!/bin/sh
-    exec ...sample-buildout/parts/varnish-build/sbin/varnishd \
+    exec ...sample-buildout/parts/varnish-build/sbin/vinyld \
         -f "...sample-buildout/parts/varnish-configuration/varnish.vcl" \
         -P "...sample-buildout/parts/varnish/varnish.pid" \
         -a 127.0.0.1:8000 \
@@ -74,7 +74,9 @@ than fight doctest's ellipsis-vs-"..."-continuation-prompt ambiguity (a bare
 "..." line right after a ">>>" line is parsed as a source continuation, not
 as expected output, so it can't be used to mean "tolerate any prefix" here),
 just assert the markers that are present either way are all in the output::
-    >>> vcc_output = system(varnish_bin + ' -C')
+    >>> vcl_file = os.path.abspath('parts/varnish-configuration/varnish.vcl')
+    >>> vcc_output = system(
+    ...     os.path.abspath(vinyld) + ' -C -a 127.0.0.1:0 -f ' + vcl_file)
     >>> '/* ---===### include/vdef.h ###===--- */' in vcc_output
     True
     >>> '/* --- BEGIN VMOD header --- */' in vcc_output
@@ -250,16 +252,28 @@ Check the contents of the control script reflect our new options::
         -S .../sample-buildout/var/varnish-Secret \
     ...
 
-Check that the built Vinyl Cache identifies itself as 9.0.x. NOTE: despite
-the Varnish Cache -> Vinyl Cache project rename, the installed binary and
-its ``-V`` self-identification are still named/branded "varnish" as of the
-9.0.x line (verified against the actual upstream 9.0.3 source: the daemon
-is built as ``varnishd`` and its version banner is produced by
-``VCS_Message("varnishd")``, printing ``varnishd (varnish-<version>
-revision <git-sha>)``)::
+Check that the built Vinyl Cache identifies itself as 9.1.x. The official
+9.1.x source release is fully renamed: the daemon is built as ``vinyld`` and
+its version banner is produced by ``VCS_Message("vinyld")``, printing
+``vinyld (vinyl-cache-<version> revision <sha>)``::
 
-    >>> output = system(varnishd + ' -V')
-    >>> if 'varnishd (varnish-9.0.' not in output:
+    >>> output = system(vinyld + ' -V')
+    >>> if 'vinyld (vinyl-cache-9.1.' not in output:
+    ...     print(output)
+
+The old ``varnish*`` executable names are kept as symlinks to the renamed
+programs for backwards compatibility::
+
+    >>> bin_dir = 'parts/varnish-build/bin'
+    >>> sbin_dir = 'parts/varnish-build/sbin'
+    >>> os.readlink(os.path.join(sbin_dir, 'varnishd'))
+    'vinyld'
+    >>> os.readlink(os.path.join(bin_dir, 'varnishadm'))
+    'vinyladm'
+    >>> os.readlink(os.path.join(bin_dir, 'varnishlog'))
+    'vinyllog'
+    >>> output = system(os.path.join(sbin_dir, 'varnishd') + ' -V')
+    >>> if 'vinyld (vinyl-cache-9.1.' not in output:
     ...     print(output)
 
 Test a buildout with multiple backends for path-based virtual hosting: two backends
@@ -279,7 +293,7 @@ serve different paths on the same hostname and one backend is the host-level fal
     ...
     ... [varnish-configuration]
     ... recipe = plone.recipe.vinylcache:configuration
-    ... daemon = ${varnish-build:location}/sbin/varnishd
+    ... daemon = ${varnish-build:location}/sbin/vinyld
     ... backends =
     ...     www.example.it:/site1:server1:8080
     ...     www.example.it:/site2:server2:8080

@@ -9,23 +9,18 @@ import re
 import zc.buildout
 
 # Vinyl Cache (the project/company formerly known as Varnish Cache/Varnish
-# Software) 9.0.x is the current stable line this recipe targets. NOTE:
-# despite the project rename, the actual 9.0.x *source release* is still
-# published as a "varnish-X.Y.Z.tar.gz" tarball (PACKAGE_TARNAME is still
-# "varnish", confirmed by inspecting the real 9.0.3 configure.ac), and it
-# still builds/installs a binary literally called `varnishd` (confirmed via
-# the upstream Makefile.am: `sbin_PROGRAMS = varnishd`) -- only internal
-# source directories (e.g. bin/vinyld/) and branding/docs have been renamed
-# so far. Re-verify both facts against a future release before assuming
-# otherwise.
-DOWNLOAD_URL = (
-    "https://github.com/varnish/varnish/releases/download/"
-    "varnish-9.0.4/varnish-9.0.4.tar.gz"
-)
+# Software) 9.1.x is the current stable line this recipe targets. The
+# official source release is published on https://vinyl-cache.org (release
+# list: https://code.vinyl-cache.org/vinyl-cache/vinyl-cache/releases) as a
+# "vinyl-cache-X.Y.Z.tgz" tarball. Unlike the 9.0.x releases, it is fully
+# renamed: it installs `vinyld`, `vinyladm`, `vinyllog`, ... instead of
+# `varnishd`, `varnishadm`, `varnishlog`, ... (BuildRecipe adds symlinks
+# with the old names for backwards compatibility).
+DOWNLOAD_URL = "https://vinyl-cache.org/downloads/vinyl-cache-9.1.0.tgz"
 # varnish-modules (vmods like header/xkey) dropped support for Varnish 6.0
-# LTS as of the releases targeting 7.0+; this tag targets the 9.0 line.
+# LTS as of the releases targeting 7.0+; this tag targets the 9.1 line.
 # The project itself is still hosted/named "varnish-modules" (not renamed).
-VMODS_DOWNLOAD_URL = "https://github.com/varnish/varnish-modules/archive/0.28.0.tar.gz"
+VMODS_DOWNLOAD_URL = "https://github.com/varnish/varnish-modules/archive/0.29.0.tar.gz"
 
 COOKIE_WHITELIST_DEFAULT = """\
 statusmessages
@@ -157,13 +152,31 @@ class BuildRecipe(CMMIRecipe, BaseRecipe):
         # MI
         system("make install")
 
-        # set daemon location. Despite the Varnish Cache -> Vinyl Cache
-        # project rename, the installed binary is still called `varnishd`
-        # as of Vinyl Cache 9.0.x (confirmed against the upstream source:
-        # `sbin_PROGRAMS = varnishd` in bin/vinyld/Makefile.am).
+        # set daemon location: Vinyl Cache >= 9.1 installs `vinyld`.
         self.options["daemon"] = os.path.join(
-            self.options["location"], "sbin", "varnishd"
+            self.options["location"], "sbin", "vinyld"
         )
+        self._add_compat_symlinks(self.options["location"])
+
+    @staticmethod
+    def _add_compat_symlinks(location):
+        """Add the pre-rename ``varnish*`` names next to the ``vinyl*`` ones.
+
+        Vinyl Cache renamed its executables (``varnishd`` -> ``vinyld``,
+        ``varnishadm`` -> ``vinyladm``, ...). Symlink the old names to the
+        new ones so scripts and tools that still call ``varnishd``,
+        ``varnishlog``, etc. in the build location keep working.
+        """
+        for subdir in ("bin", "sbin"):
+            directory = os.path.join(location, subdir)
+            if not os.path.isdir(directory):
+                continue
+            for name in sorted(os.listdir(directory)):
+                if not name.startswith("vinyl"):
+                    continue
+                link = os.path.join(directory, "varnish" + name[len("vinyl") :])
+                if not os.path.lexists(link):
+                    os.symlink(name, link)
 
 
 class ConfigureRecipe(BaseRecipe):
@@ -393,6 +406,14 @@ class ConfigureRecipe(BaseRecipe):
 
 
 class ScriptRecipe(BaseRecipe):
+    def _default_daemon(self):
+        # A build part installs `vinyld`; without one, default to the
+        # system installed daemon.
+        location = self.get_from_section(self.options["build-part"], "location", "")
+        if location:
+            return location + "/sbin/vinyld"
+        return "/usr/sbin/varnishd"
+
     def __init__(self, buildout, name, options):
         super(ScriptRecipe, self).__init__(buildout, name, options)
 
@@ -401,8 +422,7 @@ class ScriptRecipe(BaseRecipe):
 
         self.options.setdefault(
             "daemon",
-            self.get_from_section(self.options["build-part"], "location", "/usr")
-            + "/sbin/varnishd",
+            self._default_daemon(),
         )
 
         self.options.setdefault(

@@ -17,10 +17,18 @@ import re
 import sys
 import urllib.request
 
-RELEASES_API = "https://api.github.com/repos/varnish/varnish/releases?per_page=100"
-RELEASE_PAGE = "https://github.com/varnish/varnish/releases/tag/varnish-{0}"
-TAG_RE = re.compile(r"^varnish-(\d+)\.(\d+)\.(\d+)$")
-URL_PATH = "varnish-{0}/varnish-{0}.tar.gz"
+# Official releases are listed on code.vinyl-cache.org (a Gitea instance);
+# the source tarball is published on vinyl-cache.org.
+RELEASES_API = (
+    "https://code.vinyl-cache.org/api/v1/repos/vinyl-cache/vinyl-cache/releases"
+    "?limit=50"
+)
+RELEASE_PAGE = (
+    "https://code.vinyl-cache.org/vinyl-cache/vinyl-cache/releases/tag/"
+    "vinyl-cache-{0}"
+)
+TAG_RE = re.compile(r"^vinyl-cache-(\d+)\.(\d+)\.(\d+)$")
+URL_PATH = "vinyl-cache-{0}.tgz"
 
 ROOT = Path(__file__).resolve().parents[2]
 RECIPE = ROOT / "src/plone/recipe/vinylcache/recipe.py"
@@ -39,9 +47,7 @@ def fmt(version):
 
 
 def current_version():
-    match = re.search(
-        r"varnish-(\d+\.\d+\.\d+)/varnish-\1\.tar\.gz", RECIPE.read_text()
-    )
+    match = re.search(r"vinyl-cache-(\d+\.\d+\.\d+)\.tgz", RECIPE.read_text())
     if not match:
         sys.exit(f"Cannot find DOWNLOAD_URL version in {RECIPE}")
     return parse(match.group(1))
@@ -49,10 +55,7 @@ def current_version():
 
 def upstream_versions():
     request = urllib.request.Request(RELEASES_API)
-    request.add_header("Accept", "application/vnd.github+json")
-    token = os.environ.get("GH_TOKEN")
-    if token:
-        request.add_header("Authorization", f"Bearer {token}")
+    request.add_header("Accept", "application/json")
     with urllib.request.urlopen(request, timeout=30) as response:
         releases = json.load(response)
     versions = []
@@ -60,7 +63,7 @@ def upstream_versions():
         match = TAG_RE.match(release["tag_name"])
         if release["draft"] or release["prerelease"] or not match:
             continue
-        tarball = f"{release['tag_name']}.tar.gz"
+        tarball = f"{release['tag_name']}.tgz"
         # Only releases that publish the source tarball the recipe downloads.
         if any(asset["name"] == tarball for asset in release["assets"]):
             versions.append(tuple(int(part) for part in match.groups()))
@@ -117,8 +120,8 @@ def apply(kind, current, target):
         old_line, new_line = fmt(current[:2]), fmt(target[:2])
         replace(
             DOCTEST,
-            f"'varnishd (varnish-{old_line}.",
-            f"'varnishd (varnish-{new_line}.",
+            f"'vinyld (vinyl-cache-{old_line}.",
+            f"'vinyld (vinyl-cache-{new_line}.",
         )
 
 
